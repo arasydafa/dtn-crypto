@@ -1,0 +1,59 @@
+# .gitignore — Git ignore rules for DTN Crypto Simulator.
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Testing / Coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Simulation results (regeneratable)
+results/*.json
+results/*.csv
+results/*.pcap
+
+# PCAP captures
+*.pcap
+
+# Environment / Secrets
+.env
+.env.*
+credentials.json
+
+# Node (if any frontend tooling added later)
+node_modules/
+
+# Ruff
+.ruff_cache/
+
+# Qoder
+.qoder/

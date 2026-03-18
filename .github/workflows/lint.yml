@@ -1,0 +1,34 @@
+# lint.yml — GitHub Actions workflow for code linting.
+# Purpose: Runs ruff linter on push and pull_request events.
+# Dependencies: ruff
+# Usage: Triggered automatically by GitHub Actions.
+
+name: Lint
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+jobs:
+    lint:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            - name: Install dependencies
+              run: pip install ruff
+
+            - name: Run ruff linter
+              run: ruff check dtn_crypto/ tests/
+
+            - name: Run ruff formatter check
+              run: ruff format --check dtn_crypto/ tests/

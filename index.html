@@ -1,0 +1,977 @@
+<!-- index.html — Web-based DTN Crypto Simulator UI.
+     Purpose: Single-page application for running DTN simulations with
+              real-time visualization using D3.js and Chart.js.
+     Dependencies: D3.js v7, Chart.js v4 (loaded via CDN)
+     Usage: Open in browser pointed at localhost:8000
+            (run: uvicorn api.app:app - -reload) -->
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>DTN Crypto Simulator</title>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+        <style>
+            :root {
+                --bg: #0f1117;
+                --surface: #181b22;
+                --surface2: #21242d;
+                --border: #2d3140;
+                --text: #e1e4eb;
+                --text2: #8b90a0;
+                --accent: #4f8cff;
+                --accent2: #36d399;
+                --warn: #f59e42;
+                --danger: #ef4444;
+                --delivered: #36d399;
+                --intransit: #facc15;
+                --dropped: #ef4444;
+                --idle: #6b7280;
+                --active: #4f8cff;
+                --radius: 8px;
+            }
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+                background: var(--bg);
+                color: var(--text);
+                display: grid;
+                grid-template-columns: 300px 1fr;
+                grid-template-rows: 1fr auto;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            /* Sidebar */
+            .sidebar {
+                grid-row: 1 / 3;
+                background: var(--surface);
+                border-right: 1px solid var(--border);
+                padding: 20px;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .sidebar h1 {
+                font-size: 18px;
+                font-weight: 700;
+                color: var(--accent);
+                letter-spacing: -0.3px;
+            }
+
+            .sidebar h1 span {
+                color: var(--text2);
+                font-weight: 400;
+                font-size: 12px;
+            }
+
+            .sidebar h2 {
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--text2);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-top: 4px;
+            }
+
+            .control-group {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .control-group label {
+                font-size: 12px;
+                color: var(--text2);
+                font-weight: 500;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .control-group label .val {
+                color: var(--accent);
+                font-weight: 600;
+            }
+
+            select,
+            input[type=range] {
+                width: 100%;
+            }
+
+            select {
+                background: var(--surface2);
+                color: var(--text);
+                border: 1px solid var(--border);
+                padding: 8px 10px;
+                border-radius: var(--radius);
+                font-size: 13px;
+                cursor: pointer;
+            }
+
+            input[type=range] {
+                -webkit-appearance: none;
+                height: 6px;
+                border-radius: 3px;
+                background: var(--border);
+                outline: none;
+                cursor: pointer;
+            }
+
+            input[type=range]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: var(--accent);
+                cursor: pointer;
+            }
+
+            .scenarios {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .scenario-btn {
+                background: var(--surface2);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                padding: 10px 12px;
+                cursor: pointer;
+                text-align: left;
+                transition: all 0.15s;
+            }
+
+            .scenario-btn:hover {
+                border-color: var(--accent);
+                background: rgba(79, 140, 255, 0.08);
+            }
+
+            .scenario-btn.active {
+                border-color: var(--accent);
+                background: rgba(79, 140, 255, 0.12);
+            }
+
+            .scenario-btn .name {
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--text);
+            }
+
+            .scenario-btn .desc {
+                font-size: 11px;
+                color: var(--text2);
+                margin-top: 2px;
+            }
+
+            .actions {
+                display: flex;
+                gap: 8px;
+                margin-top: 4px;
+            }
+
+            .btn {
+                flex: 1;
+                padding: 10px;
+                border: none;
+                border-radius: var(--radius);
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.15s;
+            }
+
+            .btn-primary {
+                background: var(--accent);
+                color: #fff;
+            }
+
+            .btn-primary:hover {
+                background: #3d7ae6;
+            }
+
+            .btn-primary:disabled {
+                background: var(--border);
+                color: var(--text2);
+                cursor: not-allowed;
+            }
+
+            .btn-secondary {
+                background: var(--surface2);
+                color: var(--text);
+                border: 1px solid var(--border);
+            }
+
+            .btn-secondary:hover {
+                border-color: var(--text2);
+            }
+
+            .status-bar {
+                font-size: 11px;
+                color: var(--text2);
+                padding: 8px 12px;
+                background: var(--surface2);
+                border-radius: var(--radius);
+                text-align: center;
+                min-height: 34px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .status-bar.running {
+                color: var(--warn);
+            }
+
+            .status-bar.done {
+                color: var(--delivered);
+            }
+
+            .status-bar.error {
+                color: var(--danger);
+            }
+
+            .export-btn {
+                background: none;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                padding: 8px;
+                color: var(--text2);
+                font-size: 12px;
+                cursor: pointer;
+                width: 100%;
+            }
+
+            .export-btn:hover {
+                border-color: var(--accent);
+                color: var(--accent);
+            }
+
+            /* Main visualization area */
+            .main {
+                background: var(--bg);
+                position: relative;
+                overflow: hidden;
+            }
+
+            #network-svg {
+                width: 100%;
+                height: 100%;
+                display: block;
+            }
+
+            .node-label {
+                font-size: 10px;
+                fill: var(--text2);
+                text-anchor: middle;
+                pointer-events: none;
+            }
+
+            .link {
+                stroke: var(--border);
+                stroke-width: 1.5;
+            }
+
+            .link.active {
+                stroke: var(--active);
+                stroke-width: 2.5;
+                stroke-dasharray: 6, 3;
+                animation: dash 0.6s linear infinite;
+            }
+
+            @keyframes dash {
+                to {
+                    stroke-dashoffset: -9;
+                }
+            }
+
+            .tooltip {
+                position: absolute;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                padding: 10px 14px;
+                font-size: 12px;
+                pointer-events: none;
+                display: none;
+                z-index: 100;
+                max-width: 220px;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            }
+
+            .tooltip .tt-title {
+                font-weight: 600;
+                color: var(--accent);
+                margin-bottom: 4px;
+            }
+
+            .tooltip .tt-row {
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+                color: var(--text2);
+            }
+
+            .tooltip .tt-row .tt-val {
+                color: var(--text);
+                font-weight: 500;
+            }
+
+            /* Bottom metrics panel */
+            .bottom {
+                grid-column: 2;
+                background: var(--surface);
+                border-top: 1px solid var(--border);
+                padding: 16px 20px;
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 16px;
+                max-height: 240px;
+                overflow: hidden;
+            }
+
+            .chart-card {
+                background: var(--surface2);
+                border-radius: var(--radius);
+                padding: 12px;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .chart-card h3 {
+                font-size: 11px;
+                color: var(--text2);
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+                margin-bottom: 8px;
+            }
+
+            .chart-container {
+                flex: 1;
+                position: relative;
+                min-height: 0;
+            }
+
+            .chart-container canvas {
+                width: 100% !important;
+                height: 100% !important;
+            }
+
+            .gauge-wrap {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex: 1;
+            }
+
+            .gauge-value {
+                font-size: 36px;
+                font-weight: 700;
+                color: var(--accent);
+            }
+
+            .gauge-label {
+                font-size: 11px;
+                color: var(--text2);
+                text-align: center;
+            }
+        </style>
+    </head>
+
+    <body>
+
+        <!-- Sidebar Controls -->
+        <div class="sidebar">
+            <div>
+                <h1>DTN Crypto Simulator <span>v0.1</span></h1>
+            </div>
+
+            <h2>Configuration</h2>
+
+            <div class="control-group">
+                <label>Routing Algorithm</label>
+                <select id="router-select">
+                    <option value="epidemic">Epidemic (Flood)</option>
+                    <option value="prophet">PRoPHET (Probabilistic)</option>
+                    <option value="spray">Spray-and-Wait (Binary)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Node Count <span class="val" id="nodes-val">10</span></label>
+                <input type="range" id="nodes-slider" min="5" max="50" value="10">
+            </div>
+
+            <div class="control-group">
+                <label>Duration (sec) <span class="val" id="duration-val">3600</span></label>
+                <input type="range" id="duration-slider" min="60" max="7200" value="3600" step="60">
+            </div>
+
+            <div class="control-group">
+                <label>Message Rate (msg/min) <span class="val" id="rate-val">1.0</span></label>
+                <input type="range" id="rate-slider" min="0.1" max="10" value="1.0" step="0.1">
+            </div>
+
+            <h2>Scenarios</h2>
+            <div class="scenarios" id="scenarios-container">
+                <button class="scenario-btn active" data-scenario="disaster">
+                    <div class="name">Disaster Recovery</div>
+                    <div class="desc">Node failures, intermittent links, priority message routing</div>
+                </button>
+                <button class="scenario-btn" data-scenario="deepspace">
+                    <div class="name">Deep Space</div>
+                    <div class="desc">High delay (minutes), rare contacts, critical data integrity</div>
+                </button>
+                <button class="scenario-btn" data-scenario="military">
+                    <div class="name">Military Tactical</div>
+                    <div class="desc">CP-ABE policy enforcement, attribute-based access, secure multi-hop</div>
+                </button>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-primary" id="run-btn">Run Simulation</button>
+                <button class="btn btn-secondary" id="reset-btn">Reset</button>
+            </div>
+
+            <div class="status-bar" id="status-bar">Ready</div>
+
+            <button class="export-btn" id="export-btn" disabled>Export Results (JSON)</button>
+        </div>
+
+        <!-- Main Network Visualization -->
+        <div class="main" id="main-area">
+            <svg id="network-svg"></svg>
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+
+        <!-- Bottom Metrics Panel -->
+        <div class="bottom">
+            <div class="chart-card">
+                <h3>Delivery Ratio</h3>
+                <div class="gauge-wrap">
+                    <div>
+                        <div class="gauge-value" id="delivery-gauge">--</div>
+                        <div class="gauge-label">of bundles delivered</div>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>Latency Over Time</h3>
+                <div class="chart-container"><canvas id="latency-chart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h3>Crypto Overhead (ms)</h3>
+                <div class="chart-container"><canvas id="crypto-chart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h3>Bundle Status</h3>
+                <div class="chart-container"><canvas id="status-chart"></canvas></div>
+            </div>
+        </div>
+
+        <script>
+            /* ===== State ===== */
+            const API = 'http://localhost:8000';
+            let ws = null;
+            let simResult = null;
+            let simRunning = false;
+            let selectedScenario = 'disaster';
+
+            // D3 graph state
+            let nodes = [], links = [], simulation = null;
+            let activeContacts = new Set();
+            let bundleTransits = [];
+            let nodeStates = {};
+
+            /* ===== DOM refs ===== */
+            const routerSel = document.getElementById('router-select');
+            const nodeSlider = document.getElementById('nodes-slider');
+            const nodeVal = document.getElementById('nodes-val');
+            const durSlider = document.getElementById('duration-slider');
+            const durVal = document.getElementById('duration-val');
+            const rateSlider = document.getElementById('rate-slider');
+            const rateVal = document.getElementById('rate-val');
+            const runBtn = document.getElementById('run-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const statusBar = document.getElementById('status-bar');
+            const exportBtn = document.getElementById('export-btn');
+            const tooltip = document.getElementById('tooltip');
+
+            /* ===== Slider updates ===== */
+            nodeSlider.oninput = () => { nodeVal.textContent = nodeSlider.value; };
+            durSlider.oninput = () => { durVal.textContent = durSlider.value; };
+            rateSlider.oninput = () => { rateVal.textContent = parseFloat(rateSlider.value).toFixed(1); };
+
+            /* ===== Scenario buttons ===== */
+            document.querySelectorAll('.scenario-btn').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedScenario = btn.dataset.scenario;
+                };
+            });
+
+            /* ===== Charts ===== */
+            const chartDefaults = {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { display: false }, y: { display: true, ticks: { color: '#8b90a0', font: { size: 10 } }, grid: { color: '#2d3140' } } },
+            };
+
+            let latencyChart = new Chart(document.getElementById('latency-chart'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ data: [], borderColor: '#4f8cff', borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0 }] },
+                options: { ...chartDefaults },
+            });
+
+            let cryptoChart = new Chart(document.getElementById('crypto-chart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Encrypt', 'Decrypt'],
+                    datasets: [{ data: [0, 0], backgroundColor: ['#4f8cff', '#36d399'], borderRadius: 4 }],
+                },
+                options: { ...chartDefaults, indexAxis: 'x', scales: { ...chartDefaults.scales, x: { display: true, ticks: { color: '#8b90a0', font: { size: 10 } }, grid: { display: false } } } },
+            });
+
+            let statusChart = new Chart(document.getElementById('status-chart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Delivered', 'In-Transit', 'Dropped', 'Expired'],
+                    datasets: [{ data: [0, 0, 0, 0], backgroundColor: ['#36d399', '#facc15', '#ef4444', '#6b7280'], borderWidth: 0 }],
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'right', labels: { color: '#8b90a0', font: { size: 10 }, boxWidth: 10, padding: 6 } } } },
+            });
+
+            /* ===== D3 Network Graph ===== */
+            const svg = d3.select('#network-svg');
+            const mainArea = document.getElementById('main-area');
+            let width, height;
+            let linkGroup, nodeGroup, labelGroup, bundleGroup;
+
+            function initGraph(numNodes) {
+                width = mainArea.clientWidth;
+                height = mainArea.clientHeight;
+                svg.selectAll('*').remove();
+
+                const defs = svg.append('defs');
+                // Glow filter
+                const filter = defs.append('filter').attr('id', 'glow');
+                filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
+                const merge = filter.append('feMerge');
+                merge.append('feMergeNode').attr('in', 'blur');
+                merge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+                linkGroup = svg.append('g').attr('class', 'links');
+                bundleGroup = svg.append('g').attr('class', 'bundles');
+                nodeGroup = svg.append('g').attr('class', 'nodes');
+                labelGroup = svg.append('g').attr('class', 'labels');
+
+                // Create node data
+                nodes = Array.from({ length: numNodes }, (_, i) => ({
+                    id: `node-${i}`, index: i, x: width / 2, y: height / 2,
+                }));
+                links = [];
+                activeContacts = new Set();
+                nodeStates = {};
+                nodes.forEach(n => { nodeStates[n.id] = 'idle'; });
+                bundleTransits = [];
+
+                // Generate potential links (all pairs)
+                for (let i = 0; i < numNodes; i++) {
+                    for (let j = i + 1; j < numNodes; j++) {
+                        links.push({ source: `node-${i}`, target: `node-${j}`, active: false });
+                    }
+                }
+
+                simulation = d3.forceSimulation(nodes)
+                    .force('charge', d3.forceManyBody().strength(-200))
+                    .force('center', d3.forceCenter(width / 2, height / 2))
+                    .force('collision', d3.forceCollide(30))
+                    .force('x', d3.forceX(width / 2).strength(0.05))
+                    .force('y', d3.forceY(height / 2).strength(0.05))
+                    .on('tick', ticked);
+
+                renderGraph();
+            }
+
+            function renderGraph() {
+                // Links (only show a subset for readability)
+                const visLinks = links.filter(l => l.active);
+                const linkSel = linkGroup.selectAll('line').data(visLinks, d => d.source.id || d.source + '-' + (d.target.id || d.target));
+                linkSel.exit().remove();
+                linkSel.enter().append('line').attr('class', 'link active')
+                    .merge(linkSel).attr('class', d => 'link' + (d.active ? ' active' : ''));
+
+                // Nodes
+                const nodeSel = nodeGroup.selectAll('circle').data(nodes, d => d.id);
+                nodeSel.exit().remove();
+                nodeSel.enter().append('circle')
+                    .attr('r', 12)
+                    .attr('filter', 'url(#glow)')
+                    .attr('cursor', 'pointer')
+                    .call(d3.drag().on('start', dragStart).on('drag', dragging).on('end', dragEnd))
+                    .on('mouseover', showTooltip)
+                    .on('mouseout', hideTooltip)
+                    .merge(nodeSel)
+                    .attr('fill', d => {
+                        const st = nodeStates[d.id] || 'idle';
+                        if (st === 'delivering') return 'var(--delivered)';
+                        if (st === 'active') return 'var(--active)';
+                        return 'var(--idle)';
+                    });
+
+                // Labels
+                const labelSel = labelGroup.selectAll('text').data(nodes, d => d.id);
+                labelSel.exit().remove();
+                labelSel.enter().append('text').attr('class', 'node-label').attr('dy', 26)
+                    .merge(labelSel).text(d => d.id);
+            }
+
+            function ticked() {
+                linkGroup.selectAll('line')
+                    .attr('x1', d => (typeof d.source === 'object' ? d.source : nodes.find(n => n.id === d.source))?.x || 0)
+                    .attr('y1', d => (typeof d.source === 'object' ? d.source : nodes.find(n => n.id === d.source))?.y || 0)
+                    .attr('x2', d => (typeof d.target === 'object' ? d.target : nodes.find(n => n.id === d.target))?.x || 0)
+                    .attr('y2', d => (typeof d.target === 'object' ? d.target : nodes.find(n => n.id === d.target))?.y || 0);
+
+                nodeGroup.selectAll('circle').attr('cx', d => d.x).attr('cy', d => d.y);
+                labelGroup.selectAll('text').attr('x', d => d.x).attr('y', d => d.y);
+
+                // Bundle dots
+                const bSel = bundleGroup.selectAll('circle').data(bundleTransits, d => d.id);
+                bSel.exit().remove();
+                bSel.enter().append('circle').attr('r', 5).attr('fill', d => d.color || 'var(--intransit)')
+                    .merge(bSel)
+                    .attr('cx', d => d.x || 0).attr('cy', d => d.y || 0);
+            }
+
+            function dragStart(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+            function dragging(event, d) { d.fx = event.x; d.fy = event.y; }
+            function dragEnd(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+
+            function showTooltip(event, d) {
+                const st = nodeStates[d.id] || 'idle';
+                let html = `<div class="tt-title">${d.id}</div>`;
+                html += `<div class="tt-row"><span>Status</span><span class="tt-val">${st}</span></div>`;
+                html += `<div class="tt-row"><span>Buffer</span><span class="tt-val">${bufferCounts[d.id] || 0}</span></div>`;
+                html += `<div class="tt-row"><span>Delivered</span><span class="tt-val">${deliverCounts[d.id] || 0}</span></div>`;
+                tooltip.innerHTML = html;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (event.clientX - mainArea.getBoundingClientRect().left + 15) + 'px';
+                tooltip.style.top = (event.clientY - mainArea.getBoundingClientRect().top - 10) + 'px';
+            }
+            function hideTooltip() { tooltip.style.display = 'none'; }
+
+            /* ===== Event tracking state ===== */
+            let bufferCounts = {};
+            let deliverCounts = {};
+            let delivered = 0, dropped = 0, expired = 0, inTransit = 0, totalBundles = 0;
+            let latencies = [];
+            let encryptMs = 0, decryptMs = 0;
+
+            function resetMetrics() {
+                bufferCounts = {}; deliverCounts = {};
+                delivered = 0; dropped = 0; expired = 0; inTransit = 0; totalBundles = 0;
+                latencies = []; encryptMs = 0; decryptMs = 0;
+                document.getElementById('delivery-gauge').textContent = '--';
+                latencyChart.data.labels = [];
+                latencyChart.data.datasets[0].data = [];
+                latencyChart.update();
+                cryptoChart.data.datasets[0].data = [0, 0];
+                cryptoChart.update();
+                statusChart.data.datasets[0].data = [0, 0, 0, 0];
+                statusChart.update();
+            }
+
+            /* ===== Process simulation events ===== */
+            function processEvent(evt) {
+                const type = evt.type;
+
+                if (type === 'CONTACT_START') {
+                    const key = [evt.node_from, evt.node_to].sort().join('-');
+                    activeContacts.add(key);
+                    const link = links.find(l => {
+                        const s = typeof l.source === 'object' ? l.source.id : l.source;
+                        const t = typeof l.target === 'object' ? l.target.id : l.target;
+                        return [s, t].sort().join('-') === key;
+                    });
+                    if (link) link.active = true;
+                    nodeStates[evt.node_from] = 'active';
+                    nodeStates[evt.node_to] = 'active';
+                    renderGraph();
+                }
+                else if (type === 'CONTACT_END') {
+                    const key = [evt.node_from, evt.node_to].sort().join('-');
+                    activeContacts.delete(key);
+                    const link = links.find(l => {
+                        const s = typeof l.source === 'object' ? l.source.id : l.source;
+                        const t = typeof l.target === 'object' ? l.target.id : l.target;
+                        return [s, t].sort().join('-') === key;
+                    });
+                    if (link) link.active = false;
+                    // Reset node state if no other active contacts
+                    [evt.node_from, evt.node_to].forEach(nid => {
+                        const hasContact = [...activeContacts].some(k => k.includes(nid));
+                        if (!hasContact) nodeStates[nid] = 'idle';
+                    });
+                    renderGraph();
+                }
+                else if (type === 'BUNDLE_CREATE') {
+                    totalBundles++;
+                    inTransit++;
+                    bufferCounts[evt.node_from] = (bufferCounts[evt.node_from] || 0) + 1;
+                    updateStatusChart();
+                }
+                else if (type === 'BUNDLE_TRANSFER') {
+                    // Animate bundle dot
+                    const src = nodes.find(n => n.id === evt.node_from);
+                    const dst = nodes.find(n => n.id === evt.node_to);
+                    if (src && dst) {
+                        const dotId = evt.bundle_id + '-' + Math.random().toString(36).slice(2, 6);
+                        const dot = { id: dotId, x: src.x, y: src.y, color: 'var(--intransit)' };
+                        bundleTransits.push(dot);
+                        // Animate
+                        const dur = 400;
+                        const start = performance.now();
+                        const animate = (now) => {
+                            const t = Math.min((now - start) / dur, 1);
+                            dot.x = src.x + (dst.x - src.x) * t;
+                            dot.y = src.y + (dst.y - src.y) * t;
+                            if (t < 1) requestAnimationFrame(animate);
+                            else { bundleTransits = bundleTransits.filter(b => b.id !== dotId); }
+                        };
+                        requestAnimationFrame(animate);
+                    }
+                    bufferCounts[evt.node_to] = (bufferCounts[evt.node_to] || 0) + 1;
+                }
+                else if (type === 'BUNDLE_DELIVER') {
+                    delivered++;
+                    inTransit = Math.max(0, inTransit - 1);
+                    deliverCounts[evt.node_to] = (deliverCounts[evt.node_to] || 0) + 1;
+                    nodeStates[evt.node_to] = 'delivering';
+                    setTimeout(() => {
+                        if (nodeStates[evt.node_to] === 'delivering') {
+                            const hasContact = [...activeContacts].some(k => k.includes(evt.node_to));
+                            nodeStates[evt.node_to] = hasContact ? 'active' : 'idle';
+                            renderGraph();
+                        }
+                    }, 600);
+
+                    if (evt.event_data && evt.event_data.latency != null) {
+                        latencies.push(evt.event_data.latency);
+                        latencyChart.data.labels.push(latencies.length);
+                        latencyChart.data.datasets[0].data.push(evt.event_data.latency);
+                        if (latencyChart.data.labels.length > 50) {
+                            latencyChart.data.labels.shift();
+                            latencyChart.data.datasets[0].data.shift();
+                        }
+                        latencyChart.update('none');
+                    }
+                    updateDeliveryGauge();
+                    updateStatusChart();
+                    renderGraph();
+                }
+                else if (type === 'BUNDLE_EXPIRE') {
+                    expired++;
+                    inTransit = Math.max(0, inTransit - 1);
+                    updateStatusChart();
+                }
+                else if (type === 'BUNDLE_DROPPED') {
+                    dropped++;
+                    inTransit = Math.max(0, inTransit - 1);
+                    updateStatusChart();
+                }
+            }
+
+            function updateDeliveryGauge() {
+                const ratio = totalBundles > 0 ? (delivered / totalBundles * 100) : 0;
+                document.getElementById('delivery-gauge').textContent = ratio.toFixed(1) + '%';
+            }
+
+            function updateStatusChart() {
+                statusChart.data.datasets[0].data = [delivered, inTransit, dropped, expired];
+                statusChart.update('none');
+            }
+
+            function updateFinalMetrics(metrics) {
+                document.getElementById('delivery-gauge').textContent = (metrics.delivery_ratio * 100).toFixed(1) + '%';
+                cryptoChart.data.datasets[0].data = [metrics.avg_encrypt_overhead_ms, metrics.avg_decrypt_overhead_ms];
+                cryptoChart.update();
+                statusChart.data.datasets[0].data = [
+                    metrics.delivered_bundles,
+                    metrics.total_bundles - metrics.delivered_bundles - metrics.dropped_bundles - metrics.expired_bundles,
+                    metrics.dropped_bundles,
+                    metrics.expired_bundles,
+                ];
+                statusChart.update();
+            }
+
+            /* ===== Run simulation ===== */
+            runBtn.onclick = async () => {
+                if (simRunning) return;
+                simRunning = true;
+                runBtn.disabled = true;
+                exportBtn.disabled = true;
+                statusBar.className = 'status-bar running';
+                statusBar.textContent = 'Connecting...';
+                simResult = null;
+
+                const numNodes = parseInt(nodeSlider.value);
+                initGraph(numNodes);
+                resetMetrics();
+
+                const config = {
+                    router: routerSel.value,
+                    nodes: numNodes,
+                    duration: parseInt(durSlider.value),
+                    scenario: selectedScenario,
+                    seed: 42,
+                    message_rate: parseFloat(rateSlider.value),
+                    enable_pcap: false,
+                };
+
+                // Try WebSocket first
+                try {
+                    const wsUrl = API.replace('http', 'ws') + '/ws/live';
+                    ws = new WebSocket(wsUrl);
+
+                    ws.onopen = () => {
+                        statusBar.textContent = 'Simulation running...';
+                        ws.send(JSON.stringify(config));
+                    };
+
+                    let eventCount = 0;
+                    ws.onmessage = (msg) => {
+                        const data = JSON.parse(msg.data);
+                        if (data.type === 'FINAL_RESULT') {
+                            simResult = data;
+                            updateFinalMetrics(data.metrics);
+                            finishSimulation();
+                            return;
+                        }
+                        if (data.type === 'SIMULATION_COMPLETE') {
+                            return; // Wait for FINAL_RESULT
+                        }
+                        if (data.error) {
+                            statusBar.className = 'status-bar error';
+                            statusBar.textContent = 'Error: ' + data.error;
+                            finishSimulation();
+                            return;
+                        }
+                        eventCount++;
+                        if (eventCount % 3 === 0 || ['BUNDLE_DELIVER', 'BUNDLE_CREATE'].includes(data.type)) {
+                            processEvent(data);
+                        }
+                        statusBar.textContent = `Running... ${eventCount} events | ${delivered} delivered / ${totalBundles} total`;
+                    };
+
+                    ws.onerror = () => {
+                        // Fallback to REST
+                        ws.close();
+                        runViaRest(config);
+                    };
+
+                    ws.onclose = () => { };
+                } catch {
+                    runViaRest(config);
+                }
+            };
+
+            async function runViaRest(config) {
+                statusBar.textContent = 'Running via REST API...';
+                try {
+                    const resp = await fetch(API + '/simulate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(config),
+                    });
+                    const data = await resp.json();
+                    simResult = data;
+
+                    // Replay events for visualization
+                    const events = data.event_log || [];
+                    let idx = 0;
+                    const replay = () => {
+                        const batch = Math.min(20, events.length - idx);
+                        for (let i = 0; i < batch; i++) {
+                            processEvent(events[idx++]);
+                        }
+                        statusBar.textContent = `Replaying... ${idx}/${events.length} events`;
+                        if (idx < events.length) requestAnimationFrame(replay);
+                        else {
+                            updateFinalMetrics(data.metrics);
+                            finishSimulation();
+                        }
+                    };
+                    replay();
+                } catch (e) {
+                    statusBar.className = 'status-bar error';
+                    statusBar.textContent = 'Error: ' + e.message;
+                    finishSimulation();
+                }
+            }
+
+            function finishSimulation() {
+                simRunning = false;
+                runBtn.disabled = false;
+                if (simResult && !statusBar.className.includes('error')) {
+                    statusBar.className = 'status-bar done';
+                    statusBar.textContent = `Complete! ${delivered}/${totalBundles} delivered (${totalBundles > 0 ? (delivered / totalBundles * 100).toFixed(1) : 0}%)`;
+                    exportBtn.disabled = false;
+                }
+                if (ws) { try { ws.close(); } catch { } ws = null; }
+            }
+
+            /* ===== Reset ===== */
+            resetBtn.onclick = () => {
+                if (ws) { try { ws.close(); } catch { } ws = null; }
+                simRunning = false;
+                runBtn.disabled = false;
+                exportBtn.disabled = true;
+                simResult = null;
+                statusBar.className = 'status-bar';
+                statusBar.textContent = 'Ready';
+                const numNodes = parseInt(nodeSlider.value);
+                initGraph(numNodes);
+                resetMetrics();
+            };
+
+            /* ===== Export ===== */
+            exportBtn.onclick = () => {
+                if (!simResult) return;
+                const blob = new Blob([JSON.stringify(simResult, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `dtn_sim_${routerSel.value}_${Date.now()}.json`;
+                a.click();
+            };
+
+            /* ===== Init ===== */
+            initGraph(10);
+
+            /* ===== Resize ===== */
+            window.addEventListener('resize', () => {
+                width = mainArea.clientWidth;
+                height = mainArea.clientHeight;
+                if (simulation) {
+                    simulation.force('center', d3.forceCenter(width / 2, height / 2));
+                    simulation.force('x', d3.forceX(width / 2).strength(0.05));
+                    simulation.force('y', d3.forceY(height / 2).strength(0.05));
+                    simulation.alpha(0.3).restart();
+                }
+            });
+        </script>
+    </body>
+
+</html>

@@ -1,0 +1,34 @@
+{
+    "name": "Custom Example Scenario",
+    "description": "A custom scenario configuration example for the DTN Crypto Simulator.",
+    "params": {
+        "num_nodes": 8,
+        "duration": 1800,
+        "contact_probability": 0.18,
+        "min_contact_duration": 15,
+        "max_contact_duration": 90,
+        "contact_interval_mean": 150,
+        "bundle_ttl": 600,
+        "max_hop_count": 15,
+        "buffer_size": 50,
+        "message_rate": 0.5,
+        "seed": 42
+    },
+    "node_attributes": {
+        "hub": [
+            "role:receiver",
+            "clearance:high",
+            "type:hub"
+        ],
+        "relay": [
+            "role:relay",
+            "role:receiver",
+            "type:mobile"
+        ],
+        "sensor": [
+            "role:node",
+            "type:sensor"
+        ]
+    },
+    "default_policy": "role:receiver OR role:node"
+}
