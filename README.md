@@ -691,7 +691,7 @@ If you use dtn-crypto in academic research, please cite:
   title     = {dtn-crypto: Hybrid RSA-AES + CP-ABE Encryption for Delay-Tolerant Networks},
   author    = {Arasy Dafa Sulistya Kurniawan},
   year      = {2026},
-  url       = {https://github.com/dtn-crypto/dtn-crypto},
+  url       = {https://github.com/arasydafa/dtn-crypto},
   license   = {MIT},
   keywords  = {DTN, cryptography, RSA, AES, CP-ABE, delay-tolerant networks, bundle protocol},
   abstract  = {A Python library providing layered cryptographic protection for
