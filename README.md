@@ -3,12 +3,13 @@
 <!--          usage examples, API reference, and contribution guidelines. -->
 
 # dtn-crypto
-
+<!--
 [![Build Status](https://github.com/dtn-crypto/dtn-crypto/actions/workflows/test.yml/badge.svg)](https://github.com/dtn-crypto/dtn-crypto/actions/workflows/test.yml)
 [![Coverage](https://codecov.io/gh/dtn-crypto/dtn-crypto/branch/main/graph/badge.svg)](https://codecov.io/gh/dtn-crypto/dtn-crypto)
 [![PyPI Version](https://img.shields.io/pypi/v/dtn-crypto)](https://pypi.org/project/dtn-crypto/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python Version](https://img.shields.io/pypi/pyversions/dtn-crypto)](https://pypi.org/project/dtn-crypto/)
+-->
 
 **Hybrid RSA-AES + CP-ABE encryption library, DTN network simulator, and web-based visualization for Delay-Tolerant Networks.**
 
