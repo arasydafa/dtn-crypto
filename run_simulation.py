@@ -16,6 +16,7 @@ using interchangeable routing algorithms.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from simulator.engine import SimulationEngine, create_router
@@ -117,8 +118,67 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Send live UDP packets on localhost (requires --pcap) for real-time Wireshark capture",
     )
+    parser.add_argument(
+        "--payload-file",
+        type=str,
+        default=None,
+        help="Path to .txt file to use as payload for all bundles (max 1MB)",
+    )
+    parser.add_argument(
+        "--payload-text",
+        type=str,
+        default=None,
+        help="Custom text string to use as payload for all bundles",
+    )
 
     return parser.parse_args(argv)
+
+
+_MAX_PAYLOAD_SIZE = 1_048_576  # 1 MB
+
+
+def _load_custom_payload(args: argparse.Namespace) -> bytes | None:
+    """Load and validate custom payload from CLI args.
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Returns:
+        Payload bytes, or None if not specified.
+
+    Raises:
+        SystemExit: On validation failure.
+    """
+    if args.payload_file and args.payload_text:
+        print("Error: --payload-file and --payload-text are mutually exclusive.",
+              file=sys.stderr)
+        sys.exit(1)
+
+    if args.payload_text:
+        payload = args.payload_text.encode("utf-8")
+        if len(payload) > _MAX_PAYLOAD_SIZE:
+            print(f"Error: payload text exceeds 1MB limit ({len(payload)} bytes).",
+                  file=sys.stderr)
+            sys.exit(1)
+        return payload
+
+    if args.payload_file:
+        path = args.payload_file
+        if not os.path.isfile(path):
+            print(f"Error: file not found: {path}", file=sys.stderr)
+            sys.exit(1)
+        if not path.lower().endswith(".txt"):
+            print("Error: --payload-file only accepts .txt files.", file=sys.stderr)
+            sys.exit(1)
+        with open(path, "rb") as f:
+            payload = f.read()
+        if len(payload) > _MAX_PAYLOAD_SIZE:
+            print(f"Error: file exceeds 1MB limit ({len(payload)} bytes).",
+                  file=sys.stderr)
+            sys.exit(1)
+        return payload
+
+    return None
 
 
 def run_single(args: argparse.Namespace) -> SimulationMetrics:
@@ -135,6 +195,7 @@ def run_single(args: argparse.Namespace) -> SimulationMetrics:
     if args.config:
         config = load_custom_config(args.config)
 
+    custom_payload = _load_custom_payload(args)
     router = create_router(args.router)
 
     engine = SimulationEngine(
@@ -148,6 +209,7 @@ def run_single(args: argparse.Namespace) -> SimulationMetrics:
         output_path=args.output,
         enable_pcap=args.pcap,
         live_udp=args.live_udp,
+        custom_payload=custom_payload,
     )
 
     return engine.run()
@@ -169,6 +231,8 @@ def run_comparison(args: argparse.Namespace) -> list[SimulationMetrics]:
     if args.config:
         config = load_custom_config(args.config)
 
+    custom_payload = _load_custom_payload(args)
+
     for router_name in router_names:
         router = create_router(router_name)
 
@@ -181,6 +245,7 @@ def run_comparison(args: argparse.Namespace) -> list[SimulationMetrics]:
             message_rate=args.message_rate,
             config=config,
             output_path=args.output,
+            custom_payload=custom_payload,
         )
 
         metrics = engine.run()

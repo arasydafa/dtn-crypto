@@ -17,7 +17,14 @@ import asyncio
 import logging
 from typing import Any
 
-from api.schemas import MetricsResponse, SimulationConfig, SimulationEvent, SimulationResult
+from api.schemas import (
+    BundleDetail,
+    MetricsResponse,
+    NodeDetail,
+    SimulationConfig,
+    SimulationEvent,
+    SimulationResult,
+)
 from simulator.engine import SimulationEngine, create_router
 
 logger = logging.getLogger(__name__)
@@ -43,6 +50,8 @@ def _metrics_to_response(metrics: Any) -> MetricsResponse:
         avg_encrypt_overhead_ms=round(metrics.avg_encrypt_overhead_ms, 3),
         avg_decrypt_overhead_ms=round(metrics.avg_decrypt_overhead_ms, 3),
         total_transfers=metrics.total_transfers,
+        integrity_failures=metrics.integrity_failures,
+        avg_transmission_time_ms=round(metrics.avg_transmission_time_ms, 3),
         hop_count_distribution={
             str(k): v for k, v in sorted(metrics.hop_count_distribution.items())
         },
@@ -55,7 +64,7 @@ def _metrics_to_response(metrics: Any) -> MetricsResponse:
 def _run_sync(
     config: SimulationConfig,
     event_callback: Any | None = None,
-) -> tuple[Any, list[dict[str, Any]]]:
+) -> tuple[Any, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     """Run the simulation synchronously (called from thread pool).
 
     Args:
@@ -63,9 +72,11 @@ def _run_sync(
         event_callback: Optional callback for event streaming.
 
     Returns:
-        Tuple of (SimulationMetrics, event_log).
+        Tuple of (SimulationMetrics, event_log, bundle_details, node_details).
     """
     router = create_router(config.router)
+    custom_payload = config.payload_text.encode(
+        "utf-8") if config.payload_text else None
     engine = SimulationEngine(
         router=router,
         num_nodes=config.nodes,
@@ -76,10 +87,13 @@ def _run_sync(
         output_path="./results/",
         event_callback=event_callback,
         enable_pcap=config.enable_pcap,
+        custom_payload=custom_payload,
     )
     metrics = engine.run()
     event_log = engine.get_event_log()
-    return metrics, event_log
+    bundle_details = engine.get_bundle_details()
+    node_details = engine.get_node_details()
+    return metrics, event_log, bundle_details, node_details
 
 
 async def run_simulation_async(config: SimulationConfig) -> SimulationResult:
@@ -92,10 +106,14 @@ async def run_simulation_async(config: SimulationConfig) -> SimulationResult:
         SimulationResult with metrics and event log.
     """
     loop = asyncio.get_event_loop()
-    metrics, event_log = await loop.run_in_executor(None, _run_sync, config, None)
+    metrics, event_log, raw_bundles, raw_nodes = await loop.run_in_executor(
+        None, _run_sync, config, None,
+    )
 
     events = [SimulationEvent(**evt) for evt in event_log]
     metrics_resp = _metrics_to_response(metrics)
+    bundle_details = {k: BundleDetail(**v) for k, v in raw_bundles.items()}
+    node_details = {k: NodeDetail(**v) for k, v in raw_nodes.items()}
 
     pcap_file = None
     if config.enable_pcap:
@@ -105,6 +123,8 @@ async def run_simulation_async(config: SimulationConfig) -> SimulationResult:
         metrics=metrics_resp,
         event_log=events,
         pcap_file=pcap_file,
+        bundle_details=bundle_details,
+        node_details=node_details,
     )
 
 
@@ -130,7 +150,7 @@ async def stream_simulation(
         """Thread-safe callback that pushes events to the asyncio queue."""
         loop.call_soon_threadsafe(queue.put_nowait, event_dict)
 
-    metrics, event_log = await loop.run_in_executor(
+    metrics, event_log, raw_bundles, raw_nodes = await loop.run_in_executor(
         None, _run_sync, config, _event_callback
     )
 
@@ -139,6 +159,8 @@ async def stream_simulation(
 
     events = [SimulationEvent(**evt) for evt in event_log]
     metrics_resp = _metrics_to_response(metrics)
+    bundle_details = {k: BundleDetail(**v) for k, v in raw_bundles.items()}
+    node_details = {k: NodeDetail(**v) for k, v in raw_nodes.items()}
 
     pcap_file = None
     if config.enable_pcap:
@@ -148,4 +170,6 @@ async def stream_simulation(
         metrics=metrics_resp,
         event_log=events,
         pcap_file=pcap_file,
+        bundle_details=bundle_details,
+        node_details=node_details,
     )

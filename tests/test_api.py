@@ -236,3 +236,43 @@ class TestSimulateEndpoint:
             "duration": 10,
         })
         assert resp.status_code == 422
+
+    def test_simulate_has_integrity_failures_field(self) -> None:
+        """Metrics response includes integrity_failures."""
+        resp = client.post("/simulate", json={
+            "router": "epidemic", "nodes": 3, "duration": 60, "seed": 42,
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "integrity_failures" in data["metrics"]
+        assert isinstance(data["metrics"]["integrity_failures"], int)
+
+    def test_simulate_has_transmission_time_field(self) -> None:
+        """Metrics response includes avg_transmission_time_ms."""
+        resp = client.post("/simulate", json={
+            "router": "epidemic", "nodes": 3, "duration": 60, "seed": 42,
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "avg_transmission_time_ms" in data["metrics"]
+        assert isinstance(
+            data["metrics"]["avg_transmission_time_ms"], (int, float))
+
+    def test_simulate_with_custom_payload_text(self) -> None:
+        """Simulation with custom payload_text works."""
+        resp = client.post("/simulate", json={
+            "router": "epidemic", "nodes": 3, "duration": 60, "seed": 42,
+            "payload_text": "Hello DTN thesis!",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["metrics"]["total_bundles"] >= 0
+
+    def test_simulate_rejects_oversized_payload(self) -> None:
+        """Payload text exceeding 1MB is rejected."""
+        huge_text = "x" * 1_048_577
+        resp = client.post("/simulate", json={
+            "router": "epidemic", "nodes": 3, "duration": 60,
+            "payload_text": huge_text,
+        })
+        assert resp.status_code == 422

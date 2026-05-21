@@ -13,20 +13,21 @@ import json
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from .bundle import (
+from dtn_crypto.bundle import (
     BundleBuilder,
     BundleDecryptionError,
+    BundleIntegrityError,
     BundleMetadata,
     BundlePriority,
     SecureBundle,
 )
-from .cpabe import (
+from dtn_crypto.cpabe import (
     CPABEMasterKey,
     CPABEPublicParams,
     CPABEService,
     Policy,
 )
-from .utils import generate_rsa_keypair
+from dtn_crypto.utils import generate_rsa_keypair
 
 
 @pytest.fixture
@@ -377,3 +378,97 @@ class TestSecureBundleSerialization:
         # This should not raise
         json_str = json.dumps(bundle.to_dict())
         assert len(json_str) > 0
+
+
+class TestSHA256Integrity:
+    """Tests for SHA-256 payload integrity validation (R1)."""
+
+    def test_payload_hash_set_on_creation(
+        self, cpabe_system: tuple, node_keys: tuple
+    ) -> None:
+        """Verify that payload_hash is set after create_secure_bundle."""
+        service, _mk, pp = cpabe_system
+        _priv_key, pub_key = node_keys
+        builder = BundleBuilder(service, pp)
+        bundle = builder.create_secure_bundle(
+            payload=b"integrity test data",
+            source="src", destination="dst",
+            dest_public_key=pub_key,
+            policy=Policy("role:receiver"),
+        )
+        assert bundle.metadata.payload_hash != ""
+        import hashlib
+        expected = hashlib.sha256(b"integrity test data").hexdigest()
+        assert bundle.metadata.payload_hash == expected
+
+    def test_decrypt_succeeds_with_valid_hash(
+        self, cpabe_system: tuple, node_keys: tuple
+    ) -> None:
+        """Verify decrypt_payload succeeds when hash matches."""
+        service, mk, pp = cpabe_system
+        priv_key, pub_key = node_keys
+        user_key = service.keygen(mk, pp, ["role:receiver"])
+        builder = BundleBuilder(service, pp)
+        bundle = builder.create_secure_bundle(
+            payload=b"valid hash payload",
+            source="src", destination="dst",
+            dest_public_key=pub_key,
+            policy=Policy("role:receiver"),
+        )
+        plaintext = bundle.decrypt_payload(priv_key, user_key, pp, service)
+        assert plaintext == b"valid hash payload"
+
+    def test_corrupted_hash_raises_integrity_error(
+        self, cpabe_system: tuple, node_keys: tuple
+    ) -> None:
+        """Verify that a corrupted hash raises BundleIntegrityError."""
+        service, mk, pp = cpabe_system
+        priv_key, pub_key = node_keys
+        user_key = service.keygen(mk, pp, ["role:receiver"])
+        builder = BundleBuilder(service, pp)
+        bundle = builder.create_secure_bundle(
+            payload=b"tamper test",
+            source="src", destination="dst",
+            dest_public_key=pub_key,
+            policy=Policy("role:receiver"),
+        )
+        # Corrupt the hash
+        bundle.metadata.payload_hash = "0000000000000000000000000000000000000000000000000000000000000000"
+        with pytest.raises(BundleIntegrityError):
+            bundle.decrypt_payload(priv_key, user_key, pp, service)
+
+    def test_empty_hash_skips_verification(
+        self, cpabe_system: tuple, node_keys: tuple
+    ) -> None:
+        """Verify that an empty hash (legacy bundle) skips integrity check."""
+        service, mk, pp = cpabe_system
+        priv_key, pub_key = node_keys
+        user_key = service.keygen(mk, pp, ["role:receiver"])
+        builder = BundleBuilder(service, pp)
+        bundle = builder.create_secure_bundle(
+            payload=b"legacy bundle",
+            source="src", destination="dst",
+            dest_public_key=pub_key,
+            policy=Policy("role:receiver"),
+        )
+        # Clear the hash to simulate a legacy bundle without hash
+        bundle.metadata.payload_hash = ""
+        plaintext = bundle.decrypt_payload(priv_key, user_key, pp, service)
+        assert plaintext == b"legacy bundle"
+
+    def test_payload_hash_preserved_in_serialization(
+        self, cpabe_system: tuple, node_keys: tuple
+    ) -> None:
+        """Verify payload_hash survives dict roundtrip."""
+        service, _mk, pp = cpabe_system
+        _priv_key, pub_key = node_keys
+        builder = BundleBuilder(service, pp)
+        bundle = builder.create_secure_bundle(
+            payload=b"serialization test",
+            source="src", destination="dst",
+            dest_public_key=pub_key,
+            policy=Policy("role:receiver"),
+        )
+        d = bundle.to_dict()
+        restored = SecureBundle.from_dict(d)
+        assert restored.metadata.payload_hash == bundle.metadata.payload_hash

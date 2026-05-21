@@ -65,6 +65,9 @@ class SimulationMetrics:
     duration: int = 0
     num_nodes: int = 0
     total_transfers: int = 0
+    integrity_failures: int = 0
+    transmission_times_ms: list[float] = field(default_factory=list)
+    avg_transmission_time_ms: float = 0.0
 
 
 class MetricsCollector:
@@ -158,6 +161,11 @@ class MetricsCollector:
                 metrics.hop_count_distribution[hop] = (
                     metrics.hop_count_distribution.get(hop, 0) + 1
                 )
+                # Record transmission time
+                if bundle.transmission_time_ms > 0:
+                    metrics.transmission_times_ms.append(
+                        bundle.transmission_time_ms
+                    )
             if bundle.dropped:
                 metrics.dropped_bundles += 1
             if bundle.expired:
@@ -168,6 +176,10 @@ class MetricsCollector:
                 metrics.encrypt_times_ms.append(bundle.encrypt_time_ms)
             if bundle.decrypt_time_ms is not None and bundle.decrypt_time_ms > 0:
                 metrics.decrypt_times_ms.append(bundle.decrypt_time_ms)
+
+            # Track integrity failures
+            if bundle.integrity_verified is False:
+                metrics.integrity_failures += 1
 
         # Compute ratios
         if metrics.total_bundles > 0:
@@ -188,6 +200,11 @@ class MetricsCollector:
         if metrics.decrypt_times_ms:
             metrics.avg_decrypt_overhead_ms = (
                 sum(metrics.decrypt_times_ms) / len(metrics.decrypt_times_ms)
+            )
+        if metrics.transmission_times_ms:
+            metrics.avg_transmission_time_ms = (
+                sum(metrics.transmission_times_ms) /
+                len(metrics.transmission_times_ms)
             )
 
         return metrics
@@ -230,7 +247,9 @@ class MetricsCollector:
             "bundle_drop_rate": round(metrics.bundle_drop_rate, 4),
             "avg_encrypt_overhead_ms": round(metrics.avg_encrypt_overhead_ms, 3),
             "avg_decrypt_overhead_ms": round(metrics.avg_decrypt_overhead_ms, 3),
+            "avg_transmission_time_ms": round(metrics.avg_transmission_time_ms, 3),
             "total_transfers": metrics.total_transfers,
+            "integrity_failures": metrics.integrity_failures,
             "hop_count_distribution": {
                 str(k): v for k, v in sorted(metrics.hop_count_distribution.items())
             },

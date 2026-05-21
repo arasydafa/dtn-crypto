@@ -34,6 +34,10 @@ class SimulationConfig(BaseModel):
     seed: int = Field(default=42, ge=0)
     message_rate: float = Field(default=1.0, ge=0.1, le=10.0)
     enable_pcap: bool = Field(default=False)
+    payload_text: str | None = Field(
+        default=None, max_length=1_048_576,
+        description="Optional custom payload text (max 1MB).",
+    )
 
 
 class MetricsResponse(BaseModel):
@@ -66,6 +70,8 @@ class MetricsResponse(BaseModel):
     avg_encrypt_overhead_ms: float = 0.0
     avg_decrypt_overhead_ms: float = 0.0
     total_transfers: int = 0
+    integrity_failures: int = 0
+    avg_transmission_time_ms: float = 0.0
     hop_count_distribution: dict[str, int] = {}
     router_name: str = ""
     duration: int = 0
@@ -92,6 +98,49 @@ class SimulationEvent(BaseModel):
     event_data: dict = {}
 
 
+class HopEntry(BaseModel):
+    """A single hop in a bundle's path."""
+
+    from_node: str = ""
+    to_node: str = ""
+    time: float = 0.0
+    transmission_time_ms: float = 0.0
+
+
+class BundleDetail(BaseModel):
+    """Detailed information for a single bundle (inspector panel)."""
+
+    bundle_id: str = ""
+    source: str = ""
+    destination: str = ""
+    creation_time: float = 0.0
+    delivered: bool = False
+    delivery_time: float | None = None
+    expired: bool = False
+    dropped: bool = False
+    hop_count: int = 0
+    hop_history: list[HopEntry] = []
+    encrypt_time_ms: float = 0.0
+    decrypt_time_ms: float | None = None
+    transmission_time_ms: float = 0.0
+    payload_size_bytes: int = 0
+    payload_hash: str = ""
+    integrity_verified: bool | None = None
+    cpabe_policy: str = ""
+    plaintext_preview: str = ""
+    encrypted_preview: str | None = None
+
+
+class NodeDetail(BaseModel):
+    """Detailed information for a single node (inspector panel)."""
+
+    node_id: str = ""
+    attributes: list[str] = []
+    delivered_count: int = 0
+    buffer_count: int = 0
+    rsa_public_key_pem: str = ""
+
+
 class SimulationResult(BaseModel):
     """Response model for POST /simulate.
 
@@ -99,11 +148,15 @@ class SimulationResult(BaseModel):
         metrics: Simulation metrics summary.
         event_log: List of all simulation events.
         pcap_file: Path to PCAP file if capture was enabled.
+        bundle_details: Per-bundle detail data for inspector panel.
+        node_details: Per-node detail data for inspector panel.
     """
 
     metrics: MetricsResponse
     event_log: list[SimulationEvent] = []
     pcap_file: str | None = None
+    bundle_details: dict[str, BundleDetail] = {}
+    node_details: dict[str, NodeDetail] = {}
 
 
 class ScenarioInfo(BaseModel):

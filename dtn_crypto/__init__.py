@@ -34,6 +34,7 @@ __version__ = "0.1.0"
 from .bundle import (
     BundleBuilder,
     BundleDecryptionError,
+    BundleIntegrityError,
     BundleMetadata,
     BundlePriority,
     SecureBundle,
@@ -69,6 +70,7 @@ from .utils import (
 __all__ = [
     "BundleBuilder",
     "BundleDecryptionError",
+    "BundleIntegrityError",
     "BundleMetadata",
     "BundlePriority",
     "CPABECiphertext",

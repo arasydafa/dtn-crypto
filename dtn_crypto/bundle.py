@@ -25,6 +25,7 @@ network environments.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 import uuid
@@ -86,6 +87,7 @@ class BundleMetadata:
     max_hop_count: int = 32
     is_encrypted: bool = False
     crypto_layers: list[str] = field(default_factory=list)
+    payload_hash: str = ""
 
     def is_expired(self, current_time: float | None = None) -> bool:
         """Check if this bundle has expired based on TTL.
@@ -127,6 +129,7 @@ class BundleMetadata:
             "max_hop_count": self.max_hop_count,
             "is_encrypted": self.is_encrypted,
             "crypto_layers": self.crypto_layers,
+            "payload_hash": self.payload_hash,
         }
 
     @classmethod
@@ -153,6 +156,7 @@ class BundleMetadata:
             is_encrypted=bool(data["is_encrypted"]),
             # type: ignore[arg-type]
             crypto_layers=list(data["crypto_layers"]),
+            payload_hash=str(data.get("payload_hash", "")),
         )
 
 
@@ -230,6 +234,16 @@ class SecureBundle:
                 f"CP-ABE decryption failed for bundle {self.metadata.bundle_id}: {e}"
             ) from e
 
+        # Verify SHA-256 integrity if hash is present
+        if self.metadata.payload_hash:
+            computed_hash = hashlib.sha256(plaintext).hexdigest()
+            if computed_hash != self.metadata.payload_hash:
+                raise BundleIntegrityError(
+                    f"SHA-256 integrity check failed for bundle "
+                    f"{self.metadata.bundle_id}: expected "
+                    f"{self.metadata.payload_hash[:16]}..., got {computed_hash[:16]}..."
+                )
+
         return plaintext
 
     def to_dict(self) -> dict[str, object]:
@@ -265,6 +279,10 @@ class SecureBundle:
 
 class BundleDecryptionError(Exception):
     """Raised when bundle decryption fails at any layer."""
+
+
+class BundleIntegrityError(BundleDecryptionError):
+    """Raised when SHA-256 integrity verification fails after decryption."""
 
 
 class BundleBuilder:
@@ -349,6 +367,9 @@ class BundleBuilder:
         if creation_time is None:
             creation_time = current_timestamp()
 
+        # Compute SHA-256 integrity hash of plaintext before encryption
+        payload_hash = hashlib.sha256(payload).hexdigest()
+
         # Layer 1 (Inner): CP-ABE encryption under policy
         cpabe_ct = self._cpabe_service.encrypt(
             payload, self._cpabe_public_params, policy
@@ -370,6 +391,7 @@ class BundleBuilder:
             max_hop_count=max_hop_count,
             is_encrypted=True,
             crypto_layers=["cpabe", "rsa_aes"],
+            payload_hash=payload_hash,
         )
 
         return SecureBundle(

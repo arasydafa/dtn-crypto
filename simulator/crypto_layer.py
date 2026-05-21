@@ -16,15 +16,15 @@ from __future__ import annotations
 import logging
 import time
 
-from .bundle import BundleBuilder
-from .cpabe import (
+from dtn_crypto.bundle import BundleBuilder, BundleIntegrityError
+from dtn_crypto.cpabe import (
     CPABEDecryptionError,
     CPABEMasterKey,
     CPABEPublicParams,
     CPABEService,
     Policy,
 )
-from .utils import generate_rsa_keypair
+from dtn_crypto.utils import generate_rsa_keypair
 from simulator.models import Node, SimBundle
 
 logger = logging.getLogger(__name__)
@@ -147,6 +147,7 @@ class CryptoLayer:
                 creation_time=bundle.creation_time,
             )
             bundle.encrypted_payload = secure_bundle.encrypted_payload
+            bundle.payload_hash = secure_bundle.metadata.payload_hash
         except Exception:
             logger.exception(
                 "Encryption failed for bundle %s", bundle.bundle_id)
@@ -187,7 +188,7 @@ class CryptoLayer:
 
         try:
             # Reconstruct SecureBundle for decryption
-            from .bundle import BundleMetadata, SecureBundle
+            from dtn_crypto.bundle import BundleMetadata, SecureBundle
 
             metadata = BundleMetadata(
                 bundle_id=bundle.bundle_id,
@@ -197,6 +198,7 @@ class CryptoLayer:
                 ttl=bundle.ttl,
                 is_encrypted=True,
                 crypto_layers=["cpabe", "rsa_aes"],
+                payload_hash=bundle.payload_hash,
             )
             secure_bundle = SecureBundle(
                 metadata=metadata,
@@ -209,6 +211,14 @@ class CryptoLayer:
                 self._public_params,
                 self._cpabe_service,
             )
+        except BundleIntegrityError:
+            logger.warning(
+                "SHA-256 integrity check failed for bundle %s at node %s",
+                bundle.bundle_id,
+                dest_node.node_id,
+            )
+            bundle.integrity_verified = False
+            return None
         except CPABEDecryptionError:
             logger.debug(
                 "CP-ABE policy mismatch for bundle %s at node %s",
@@ -226,6 +236,7 @@ class CryptoLayer:
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         bundle.decrypt_time_ms = elapsed_ms
+        bundle.integrity_verified = True
 
         return plaintext
 

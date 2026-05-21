@@ -99,6 +99,7 @@ class SimulationEngine:
         event_callback: Callable[[dict[str, Any]], None] | None = None,
         enable_pcap: bool = False,
         live_udp: bool = False,
+        custom_payload: bytes | None = None,
     ) -> None:
         """Initialize the simulation engine.
 
@@ -124,6 +125,7 @@ class SimulationEngine:
         self._event_callback = event_callback
         self._enable_pcap = enable_pcap
         self._live_udp = live_udp
+        self._custom_payload = custom_payload
 
         # Load scenario config
         if config is not None:
@@ -323,18 +325,38 @@ class SimulationEngine:
 
             if receiver.add_bundle(bundle):
                 self._metrics.record_transfer()
+
+                # Compute simulated transmission time
+                bandwidth_bps = self._params.get("link_bandwidth_bps", 100_000)
+                if bandwidth_bps > 0 and bundle.payload_size_bytes > 0:
+                    tx_ms = (bundle.payload_size_bytes *
+                             8 / bandwidth_bps) * 1000
+                else:
+                    tx_ms = 0.0
+                bundle.transmission_time_ms += tx_ms
+
+                # Track hop history (detach list to avoid shallow-copy mutation)
+                bundle.hop_history = list(bundle.hop_history)
+                bundle.hop_history.append({
+                    "from_node": from_id,
+                    "to_node": to_id,
+                    "time": round(self.current_time, 3),
+                    "transmission_time_ms": round(tx_ms, 3),
+                })
+
                 transfer_evt = {
                     "type": "BUNDLE_TRANSFER",
                     "time": round(self.current_time, 3),
                     "node_from": from_id,
                     "node_to": to_id,
                     "bundle_id": bundle.bundle_id,
-                    "event_data": {},
+                    "event_data": {"transmission_time_ms": round(tx_ms, 3)},
                 }
                 self._metrics.log_event(
                     "BUNDLE_TRANSFER", self.current_time,
                     node_from=from_id, node_to=to_id,
                     bundle_id=bundle.bundle_id,
+                    event_data={"transmission_time_ms": round(tx_ms, 3)},
                 )
                 self._emit_event(transfer_evt)
 
@@ -389,7 +411,10 @@ class SimulationEngine:
         default_policy = self._config.get(
             "default_policy", "role:receiver OR role:node")
 
-        payload = f"DTN-MSG from {source_id} to {dest_id} at t={self.current_time:.1f}".encode()
+        if self._custom_payload is not None:
+            payload = self._custom_payload
+        else:
+            payload = f"DTN-MSG from {source_id} to {dest_id} at t={self.current_time:.1f}".encode()
         bundle = SimBundle(
             source=source_id,
             destination=dest_id,
@@ -407,6 +432,14 @@ class SimulationEngine:
         if self._crypto is not None:
             self._crypto.encrypt_bundle(bundle, dest_node)
 
+        # Compute payload size for transmission time calculation
+        if bundle.encrypted_payload is not None:
+            import json as _json
+            bundle.payload_size_bytes = len(
+                _json.dumps(bundle.encrypted_payload))
+        else:
+            bundle.payload_size_bytes = len(bundle.payload)
+
         if not source_node.add_bundle(bundle):
             bundle.dropped = True
             self._metrics.log_event(
@@ -418,13 +451,28 @@ class SimulationEngine:
         self._all_bundles[bundle.bundle_id] = bundle
         self._metrics.register_bundle(bundle)
 
+        # Build content previews for inspector
+        plaintext_preview = bundle.payload.decode(
+            "utf-8", errors="replace")[:120] if bundle.payload else ""
+        encrypted_preview = None
+        if bundle.encrypted_payload is not None:
+            import json as _ejson
+            encrypted_preview = _ejson.dumps(bundle.encrypted_payload)[:80]
+
         create_evt = {
             "type": "BUNDLE_CREATE",
             "time": round(self.current_time, 3),
             "node_from": source_id,
             "node_to": dest_id,
             "bundle_id": bundle.bundle_id,
-            "event_data": {},
+            "event_data": {
+                "encrypt_time_ms": round(bundle.encrypt_time_ms, 3),
+                "payload_size_bytes": bundle.payload_size_bytes,
+                "plaintext_preview": plaintext_preview,
+                "encrypted_preview": encrypted_preview,
+                "payload_hash": bundle.payload_hash,
+                "cpabe_policy": bundle.cpabe_policy,
+            },
         }
         self._metrics.log_event(
             "BUNDLE_CREATE", self.current_time,
@@ -463,17 +511,24 @@ class SimulationEngine:
         if self._crypto is not None and bundle.encrypted_payload is not None:
             plaintext = self._crypto.decrypt_bundle(bundle, dest_node)
             if plaintext is None:
+                # Distinguish integrity failure from policy mismatch
+                if bundle.integrity_verified is False:
+                    reason = "integrity_fail"
+                    event_type = "INTEGRITY_FAIL"
+                else:
+                    reason = "policy_mismatch"
+                    event_type = "DECRYPT_FAIL"
                 self._metrics.log_event(
-                    "DECRYPT_FAIL", self.current_time,
+                    event_type, self.current_time,
                     node_to=dest_node.node_id, bundle_id=bundle.bundle_id,
-                    event_data={"reason": "policy_mismatch"},
+                    event_data={"reason": reason},
                 )
                 self._emit_event({
-                    "type": "DECRYPT_FAIL",
+                    "type": event_type,
                     "time": round(self.current_time, 3),
                     "node_from": "", "node_to": dest_node.node_id,
                     "bundle_id": bundle.bundle_id,
-                    "event_data": {"reason": "policy_mismatch"},
+                    "event_data": {"reason": reason},
                 })
                 return
 
@@ -487,6 +542,9 @@ class SimulationEngine:
             master.delivery_time = self.current_time
             master.decrypt_time_ms = bundle.decrypt_time_ms
             master.hop_count = bundle.hop_count
+            master.transmission_time_ms = bundle.transmission_time_ms
+            master.integrity_verified = bundle.integrity_verified
+            master.hop_history = list(bundle.hop_history)
 
         latency = round(self.current_time - bundle.creation_time, 3)
         deliver_evt = {
@@ -495,7 +553,15 @@ class SimulationEngine:
             "node_from": bundle.source,
             "node_to": dest_node.node_id,
             "bundle_id": bundle.bundle_id,
-            "event_data": {"latency": latency, "hops": bundle.hop_count},
+            "event_data": {
+                "latency": latency,
+                "hops": bundle.hop_count,
+                "encrypt_time_ms": round(bundle.encrypt_time_ms, 3),
+                "decrypt_time_ms": round(bundle.decrypt_time_ms, 3) if bundle.decrypt_time_ms is not None else 0,
+                "transmission_time_ms": round(bundle.transmission_time_ms, 3),
+                "integrity_verified": bundle.integrity_verified,
+                "payload_hash": bundle.payload_hash,
+            },
         }
         self._metrics.log_event(
             "BUNDLE_DELIVER", self.current_time,
@@ -622,6 +688,9 @@ class SimulationEngine:
         print(f"  Bundle drop rate:   {metrics.bundle_drop_rate:.2%}")
         print(f"  Avg encrypt time:   {metrics.avg_encrypt_overhead_ms:.2f}ms")
         print(f"  Avg decrypt time:   {metrics.avg_decrypt_overhead_ms:.2f}ms")
+        print(
+            f"  Avg transmit time:  {metrics.avg_transmission_time_ms:.2f}ms")
+        print(f"  Integrity failures: {metrics.integrity_failures}")
         print(f"  Total transfers:    {metrics.total_transfers}")
         if metrics.hop_count_distribution:
             print(
@@ -656,3 +725,68 @@ class SimulationEngine:
             List of event dictionaries.
         """
         return self._metrics.get_event_log()
+
+    def get_bundle_details(self) -> dict[str, dict[str, Any]]:
+        """Get detailed information for all bundles (for inspector panel).
+
+        Returns:
+            Dict mapping bundle_id to detail dict.
+        """
+        import json as _bjson
+        details: dict[str, dict[str, Any]] = {}
+        for bid, b in self._all_bundles.items():
+            plaintext_preview = b.payload.decode(
+                "utf-8", errors="replace")[:120] if b.payload else ""
+            encrypted_preview = None
+            if b.encrypted_payload is not None:
+                encrypted_preview = _bjson.dumps(b.encrypted_payload)[:80]
+            details[bid] = {
+                "bundle_id": b.bundle_id,
+                "source": b.source,
+                "destination": b.destination,
+                "creation_time": round(b.creation_time, 3),
+                "delivered": b.delivered,
+                "delivery_time": round(b.delivery_time, 3) if b.delivery_time is not None else None,
+                "expired": b.expired,
+                "dropped": b.dropped,
+                "hop_count": b.hop_count,
+                "hop_history": b.hop_history,
+                "encrypt_time_ms": round(b.encrypt_time_ms, 3),
+                "decrypt_time_ms": round(b.decrypt_time_ms, 3) if b.decrypt_time_ms is not None else None,
+                "transmission_time_ms": round(b.transmission_time_ms, 3),
+                "payload_size_bytes": b.payload_size_bytes,
+                "payload_hash": b.payload_hash,
+                "integrity_verified": b.integrity_verified,
+                "cpabe_policy": b.cpabe_policy,
+                "plaintext_preview": plaintext_preview,
+                "encrypted_preview": encrypted_preview,
+            }
+        return details
+
+    def get_node_details(self) -> dict[str, dict[str, Any]]:
+        """Get detailed information for all nodes (for inspector panel).
+
+        Returns:
+            Dict mapping node_id to detail dict.
+        """
+        from dtn_crypto.utils import serialize_public_key
+        details: dict[str, dict[str, Any]] = {}
+        for nid, node in self.nodes.items():
+            pem_preview = ""
+            if node.rsa_public_key is not None:
+                try:
+                    pem_bytes = serialize_public_key(node.rsa_public_key)
+                    pem_lines = pem_bytes.decode("utf-8").strip().splitlines()
+                    pem_preview = "\n".join(pem_lines[:4])
+                    if len(pem_lines) > 4:
+                        pem_preview += "\n..."
+                except Exception:
+                    pem_preview = "<unavailable>"
+            details[nid] = {
+                "node_id": nid,
+                "attributes": list(node.attributes),
+                "delivered_count": node.delivered_count,
+                "buffer_count": len(node.buffer),
+                "rsa_public_key_pem": pem_preview,
+            }
+        return details

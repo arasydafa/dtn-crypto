@@ -62,6 +62,7 @@ def get_scenario_config(
                 "buffer_size": 50,
                 "message_rate": message_rate,
                 "seed": seed,
+                "link_bandwidth_bps": 1_000,
             },
             "node_attributes": {
                 "ground_station": ["role:receiver", "clearance:high", "type:ground"],
@@ -89,6 +90,7 @@ def get_scenario_config(
                 "buffer_size": 80,
                 "message_rate": message_rate,
                 "seed": seed,
+                "link_bandwidth_bps": 100_000,
             },
             "node_attributes": {
                 "base_station": ["role:receiver", "type:base", "clearance:high"],
@@ -116,6 +118,7 @@ def get_scenario_config(
                 "buffer_size": 60,
                 "message_rate": message_rate,
                 "seed": seed,
+                "link_bandwidth_bps": 50_000,
             },
             "node_attributes": {
                 "command": ["role:admin", "role:receiver", "clearance:top"],
@@ -142,6 +145,7 @@ def get_scenario_config(
                 "buffer_size": 100,
                 "message_rate": message_rate,
                 "seed": seed,
+                "link_bandwidth_bps": 100_000,
             },
             "node_attributes": {
                 "default": ["role:node", "role:receiver"],

@@ -11,8 +11,8 @@ from __future__ import annotations
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from .rsa_aes import HybridCiphertext, hybrid_decrypt, hybrid_encrypt
-from .utils import (
+from dtn_crypto.rsa_aes import HybridCiphertext, hybrid_decrypt, hybrid_encrypt
+from dtn_crypto.utils import (
     deserialize_private_key,
     deserialize_public_key,
     generate_aes_key,

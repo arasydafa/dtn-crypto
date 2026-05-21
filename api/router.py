@@ -102,6 +102,12 @@ async def websocket_live(websocket: WebSocket) -> None:
         await websocket.send_json({
             "type": "FINAL_RESULT",
             "metrics": result.metrics.model_dump(),
+            "bundle_details": {
+                k: v.model_dump() for k, v in result.bundle_details.items()
+            },
+            "node_details": {
+                k: v.model_dump() for k, v in result.node_details.items()
+            },
         })
 
     except WebSocketDisconnect:

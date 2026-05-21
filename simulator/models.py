@@ -118,6 +118,11 @@ class SimBundle:
     decrypt_time_ms: float | None = None
     spray_tokens: int = 0
     cpabe_policy: str = ""
+    payload_hash: str = ""
+    integrity_verified: bool | None = None
+    transmission_time_ms: float = 0.0
+    payload_size_bytes: int = 0
+    hop_history: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Generate bundle_id if not provided."""

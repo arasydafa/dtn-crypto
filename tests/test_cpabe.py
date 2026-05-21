@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from .cpabe import (
+from dtn_crypto.cpabe import (
     CPABECiphertext,
     CPABEDecryptionError,
     CPABEMasterKey,
