@@ -1,0 +1,44 @@
+.git/
+.github/
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# Build outputs
+site/
+dist/
+frontend/dist/
+
+# Simulation results
+results/
+*.pcap
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Tools
+.qoder/
+*.swp
+*.swo
+
+# Docs (not needed in container)
+docs/
+tests/
+WIKI.md
+CONTRIBUTING.md

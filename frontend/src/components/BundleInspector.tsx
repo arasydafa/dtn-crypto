@@ -1,10 +1,35 @@
+/**
+ * @module components/BundleInspector
+ * @description Detailed bundle inspector showing path, timing, and content stages.
+ *
+ * Renders the complete bundle lifecycle: status badge, routing path timeline,
+ * encrypt/transmit/decrypt timing waterfall, and three content stages
+ * (plaintext at source, encrypted in transit, decrypted at destination).
+ *
+ * Contains three internal helper components:
+ * - {@link StatusBadge} — colored badge for bundle status
+ * - {@link TimingWaterfall} — horizontal stacked bar for timing breakdown
+ * - {@link AccordionSection} — collapsible section for content stages
+ *
+ * @example
+ * ```tsx
+ * <BundleInspector bundle={bundleDetails["abc-123"]} />
+ * ```
+ */
+
 import { useState } from "react";
 import type { BundleDetail } from "../types";
 
+/** Props for the BundleInspector component. */
 interface Props {
+  /** Complete bundle detail data. */
   bundle: BundleDetail;
 }
 
+/**
+ * Colored badge indicating bundle delivery status.
+ * @param bundle - Bundle to display status for.
+ */
 function StatusBadge({ bundle }: { bundle: BundleDetail }) {
   if (bundle.delivered)
     return <span className="badge badge-delivered">Delivered</span>;
@@ -15,6 +40,10 @@ function StatusBadge({ bundle }: { bundle: BundleDetail }) {
   return <span className="badge badge-transit">In Transit</span>;
 }
 
+/**
+ * Horizontal stacked bar showing encrypt/transmit/decrypt time breakdown.
+ * @param bundle - Bundle with timing data.
+ */
 function TimingWaterfall({ bundle }: { bundle: BundleDetail }) {
   const enc = bundle.encrypt_time_ms;
   const tx = bundle.transmission_time_ms;
@@ -57,6 +86,12 @@ function TimingWaterfall({ bundle }: { bundle: BundleDetail }) {
   );
 }
 
+/**
+ * Collapsible accordion section with a trigger button.
+ * @param title - Section header text.
+ * @param defaultOpen - Whether the section starts expanded.
+ * @param children - Section content.
+ */
 function AccordionSection({
   title,
   defaultOpen,
@@ -82,6 +117,15 @@ function AccordionSection({
   );
 }
 
+/**
+ * Bundle inspector component.
+ *
+ * Sections:
+ * 1. **Header** — Status badge, source→destination, creation time, hop count, payload size
+ * 2. **Bundle Path** — Hop-by-hop timeline with transfer times
+ * 3. **Timing Breakdown** — Encrypt/transmit/decrypt waterfall chart
+ * 4. **Content Stages** — Plaintext (source), Encrypted (transit), Decrypted (destination)
+ */
 export default function BundleInspector({ bundle }: Props) {
   return (
     <>

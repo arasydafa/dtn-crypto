@@ -1,0 +1,91 @@
+site_name: DTN Crypto Simulator
+site_description: Hybrid RSA-AES + CP-ABE encryption library, DTN network simulator, and web-based visualization for Delay-Tolerant Networks.
+site_author: Arasy Dafa Sulistya Kurniawan
+repo_url: https://github.com/dtn-crypto/dtn-crypto
+repo_name: dtn-crypto/dtn-crypto
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            heading_level: 3
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Architecture: architecture.md
+  - Cryptography:
+      - Overview: crypto/index.md
+      - RSA-AES Hybrid Encryption: crypto/rsa-aes.md
+      - CP-ABE Access Control: crypto/cp-abe.md
+      - Bundle Format & Integrity: crypto/bundles.md
+  - Simulator:
+      - Overview: simulator/index.md
+      - Routing Algorithms: simulator/routing.md
+      - Scenarios: simulator/scenarios.md
+      - CLI Usage: simulator/cli.md
+  - Web UI:
+      - Overview: web-ui/index.md
+      - Dashboard: web-ui/dashboard.md
+      - Inspector: web-ui/inspector.md
+      - API Reference: web-ui/api-reference.md
+      - PCAP Capture: web-ui/pcap.md
+  - API Schemas: api/schemas.md
+  - Development:
+      - Contributing: development/contributing.md
+      - Testing: development/testing.md
+      - Project Structure: development/project-structure.md
+  - Changelog: changelog.md

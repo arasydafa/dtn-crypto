@@ -7,10 +7,11 @@ import {
   LinearScale,
   CategoryScale,
   Filler,
+  Tooltip,
 } from "chart.js";
 import type { SimulationEvent } from "../../types";
 
-Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler);
+Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip);
 
 interface Props {
   events: SimulationEvent[];
@@ -34,18 +35,48 @@ export default function LatencyChart({ events }: Props) {
             borderWidth: 2,
             fill: false,
             tension: 0.3,
-            pointRadius: 0,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            pointBackgroundColor: "#4f8cff",
+            pointBorderColor: "#fff",
+            pointBorderWidth: 1,
           },
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        interaction: {
+          mode: "index",
+          intersect: false,
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: true,
+            backgroundColor: "rgba(18, 20, 28, 0.95)",
+            titleColor: "#e5e7f0",
+            bodyColor: "#8b8fa5",
+            borderColor: "#2a2d3e",
+            borderWidth: 1,
+            padding: 10,
+            displayColors: false,
+            callbacks: {
+              title: (items) => `Bundle #${items[0].label}`,
+              label: (item) => `Latency: ${(item.parsed.y ?? 0).toFixed(2)}s`,
+            },
+          },
+        },
         scales: {
-          x: { display: false },
+          x: {
+            display: true,
+            title: { display: true, text: "Bundle #", color: "#8b90a0", font: { size: 10 } },
+            ticks: { color: "#8b90a0", font: { size: 10 }, maxTicksLimit: 10 },
+            grid: { color: "#2d3140" },
+          },
           y: {
             display: true,
+            title: { display: true, text: "Seconds", color: "#8b90a0", font: { size: 10 } },
             ticks: { color: "#8b90a0", font: { size: 10 } },
             grid: { color: "#2d3140" },
           },
@@ -53,9 +84,7 @@ export default function LatencyChart({ events }: Props) {
       },
     });
     chartRef.current = chart;
-    return () => {
-      chart.destroy();
-    };
+    return () => { chart.destroy(); };
   }, []);
 
   useEffect(() => {
@@ -63,10 +92,10 @@ export default function LatencyChart({ events }: Props) {
     if (!chart) return;
 
     const deliveries = events.filter(
-      (e) => e.type === "BUNDLE_DELIVER" && e.event_data?.latency != null,
+      (e) => e.type === "BUNDLE_DELIVER" && (e.latency != null || e.event_data?.latency != null),
     );
     const newLatencies = deliveries.map(
-      (e) => e.event_data.latency as number,
+      (e) => (e.latency ?? e.event_data?.latency) as number,
     );
 
     if (newLatencies.length === latenciesRef.current.length) return;

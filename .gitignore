@@ -16,6 +16,9 @@ build/
 venv/
 env/
 
+# UV
+uv.lock
+
 # Testing / Coverage
 .pytest_cache/
 htmlcov/
@@ -47,10 +50,16 @@ results/*.pcap
 # Environment / Secrets
 .env
 .env.*
+!*.env.example
 credentials.json
 
-# Node (if any frontend tooling added later)
+# Node / Frontend
 node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# MkDocs build output
+site/
 
 # Ruff
 .ruff_cache/

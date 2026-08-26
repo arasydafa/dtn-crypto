@@ -1,3 +1,16 @@
+/**
+ * @module components/charts/CryptoChart
+ * @description Bar chart showing crypto and transmission overhead in milliseconds.
+ *
+ * Displays three bars: encrypt overhead, decrypt overhead, and transmission
+ * time. Values are sourced from the aggregated metrics response.
+ *
+ * @example
+ * ```tsx
+ * <CryptoChart metrics={metrics} />
+ * ```
+ */
+
 import { useRef, useEffect } from "react";
 import {
     Chart,
@@ -10,14 +23,25 @@ import type { MetricsResponse } from "../../types";
 
 Chart.register(BarController, BarElement, LinearScale, CategoryScale);
 
+/** Props for the CryptoChart component. */
 interface Props {
-    metrics: MetricsResponse;
+  /** Current simulation metrics with crypto overhead values. */
+  metrics: MetricsResponse;
 }
 
+/**
+ * Crypto overhead bar chart.
+ *
+ * Three bars:
+ * - **Encrypt** (blue) — average time to encrypt at source
+ * - **Decrypt** (green) — average time to decrypt at destination
+ * - **Transmit** (orange) — average transmission time per hop
+ */
 export default function CryptoChart({ metrics }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const chartRef = useRef<Chart | null>(null);
 
+    /** Initialize the Chart.js bar chart on mount. */
     useEffect(() => {
         if (!canvasRef.current) return;
         const chart = new Chart(canvasRef.current, {
@@ -56,6 +80,7 @@ export default function CryptoChart({ metrics }: Props) {
         };
     }, []);
 
+    /** Update bar data when metrics change. */
     useEffect(() => {
         const chart = chartRef.current;
         if (!chart) return;

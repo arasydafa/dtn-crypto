@@ -1,10 +1,28 @@
+/**
+ * @module components/AppLog
+ * @description Application log viewer showing connection status, simulation progress, and errors.
+ *
+ * Displays log entries in reverse chronological order (newest first) with
+ * colored level indicators. Entries are capped at 500 by the useSimulation hook.
+ *
+ * @example
+ * ```tsx
+ * <AppLog logs={sim.appLogs} onClear={sim.clearAppLogs} />
+ * ```
+ */
+
 import type { AppLogEntry } from "../hooks/useSimulation";
 
+/** Props for the AppLog component. */
 interface Props {
-    logs: AppLogEntry[];
-    onClear: () => void;
+  /** Array of application log entries (newest first). */
+  logs: AppLogEntry[];
+
+  /** Callback to clear all log entries. */
+  onClear: () => void;
 }
 
+/** Color mapping for log levels. */
 const levelColors: Record<string, string> = {
     info: "var(--accent)",
     warn: "var(--warn)",
@@ -12,6 +30,7 @@ const levelColors: Record<string, string> = {
     success: "var(--delivered)",
 };
 
+/** Icon mapping for log levels. */
 const levelIcons: Record<string, string> = {
     info: "ℹ",
     warn: "⚠",
@@ -19,6 +38,15 @@ const levelIcons: Record<string, string> = {
     success: "✓",
 };
 
+/**
+ * Application log viewer.
+ *
+ * Each row shows:
+ * - Timestamp (`HH:MM:SS`)
+ * - Colored level badge (INFO, WARN, ERROR, SUCCESS)
+ * - Log message
+ * - Optional detail text (e.g., error stack, config summary)
+ */
 export default function AppLog({ logs, onClear }: Props) {
     return (
         <div className="app-log">

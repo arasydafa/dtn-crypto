@@ -39,8 +39,12 @@ async def simulate(config: SimulationConfig) -> SimulationResult:
     Returns:
         SimulationResult containing metrics and the full event log.
     """
-    result = await run_simulation_async(config)
-    return result
+    try:
+        result = await run_simulation_async(config)
+        return result
+    except Exception:
+        logger.exception("Simulation failed")
+        raise
 
 
 @api_router.get("/scenarios", response_model=list[ScenarioInfo])
@@ -114,10 +118,10 @@ async def websocket_live(websocket: WebSocket) -> None:
         logger.info("WebSocket client disconnected")
     except json.JSONDecodeError:
         await websocket.send_json({"error": "Invalid JSON configuration"})
-    except Exception as e:
+    except Exception:
         logger.exception("WebSocket error")
         try:
-            await websocket.send_json({"error": str(e)})
+            await websocket.send_json({"error": "Internal server error"})
         except Exception:
             pass
     finally:

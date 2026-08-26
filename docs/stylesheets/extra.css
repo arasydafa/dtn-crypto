@@ -1,0 +1,47 @@
+/* Extra CSS for DTN Crypto MkDocs site */
+
+/* Admonition custom styling */
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 8px;
+}
+
+/* Code block styling */
+.md-typeset pre {
+  border-radius: 8px;
+}
+
+/* Table styling */
+.md-typeset table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Navigation tabs */
+.md-tabs {
+  background-color: var(--md-primary-fg-color);
+}
+
+/* Custom badge styling for crypto layers */
+.crypto-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.crypto-badge.outer {
+  background-color: rgba(79, 140, 255, 0.15);
+  color: #4f8cff;
+}
+
+.crypto-badge.inner {
+  background-color: rgba(108, 92, 231, 0.15);
+  color: #6c5ce7;
+}
+
+.crypto-badge.integrity {
+  background-color: rgba(54, 211, 153, 0.15);
+  color: #36d399;
+}

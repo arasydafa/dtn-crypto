@@ -166,7 +166,7 @@ class SimulationEngine:
             try:
                 self._event_callback(event_dict)
             except Exception:
-                logger.debug("Event callback failed", exc_info=True)
+                logger.warning("Event callback failed", exc_info=True)
 
     def _log_progress(self, message: str) -> None:
         """Log a progress message with timestamp.

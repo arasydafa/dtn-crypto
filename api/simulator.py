@@ -105,7 +105,7 @@ async def run_simulation_async(config: SimulationConfig) -> SimulationResult:
     Returns:
         SimulationResult with metrics and event log.
     """
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     metrics, event_log, raw_bundles, raw_nodes = await loop.run_in_executor(
         None, _run_sync, config, None,
     )
@@ -144,7 +144,7 @@ async def stream_simulation(
     Returns:
         SimulationResult with metrics and event log.
     """
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     def _event_callback(event_dict: dict[str, Any]) -> None:
         """Thread-safe callback that pushes events to the asyncio queue."""

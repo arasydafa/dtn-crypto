@@ -1,3 +1,40 @@
+/**
+ * @module hooks/useSimulation
+ * @description Primary application hook managing all simulation state, WebSocket/REST
+ * communication, event processing, presets, and UI state.
+ *
+ * This hook is the central state manager for the entire DTN Crypto Simulator
+ * frontend. It handles:
+ * - Simulation lifecycle (idle → running → done/error)
+ * - WebSocket real-time event streaming with REST fallback
+ * - Event batching to prevent excessive React re-renders
+ * - Bundle and node detail tracking
+ * - Inspector panel selection
+ * - UI state (sidebar, bottom panel, theme, animation speed)
+ * - Preset save/load via localStorage
+ * - CSV and JSON export
+ *
+ * @example
+ * ```typescript
+ * function App() {
+ *   const sim = useSimulation();
+ *
+ *   return (
+ *     <Sidebar
+ *       config={sim.config}
+ *       onConfigChange={sim.updateConfig}
+ *       ...
+ *     />
+ *     <NetworkGraph
+ *       numNodes={sim.config.nodes}
+ *       events={sim.events}
+ *       ...
+ *     />
+ *   );
+ * }
+ * ```
+ */
+
 import { useState, useCallback, useRef } from "react";
 import type {
   SimulationConfig,
@@ -11,6 +48,7 @@ import type {
 } from "../types";
 import { runSimulation, getWsUrl } from "../api/client";
 
+/** Default simulation configuration used when the app initializes or resets. */
 const defaultConfig: SimulationConfig = {
   router: "epidemic",
   nodes: 10,
@@ -22,6 +60,7 @@ const defaultConfig: SimulationConfig = {
   payload_text: null,
 };
 
+/** Empty metrics object returned before any simulation has run. */
 const emptyMetrics: MetricsResponse = {
   total_bundles: 0,
   delivered_bundles: 0,
@@ -41,22 +80,84 @@ const emptyMetrics: MetricsResponse = {
   num_nodes: 0,
 };
 
+/**
+ * A single entry in the application log.
+ *
+ * App logs record significant events during the simulation lifecycle:
+ * connection status, simulation progress, errors, and user actions.
+ */
 export interface AppLogEntry {
+  /** Unique sequential ID for React keying. */
   id: number;
+
+  /** Timestamp string in `HH:MM:SS` format (24-hour). */
   time: string;
+
+  /** Log level determining the entry's visual style and semantic meaning. */
   level: "info" | "warn" | "error" | "success";
+
+  /** Human-readable log message. */
   message: string;
+
+  /** Optional additional detail text (e.g., error stack, config summary). */
   detail?: string;
 }
 
+/**
+ * Safely close a WebSocket connection, ignoring errors if already closed.
+ * @param ws - WebSocket instance to close, or null.
+ */
 function safeClose(ws: WebSocket | null) {
   if (ws) {
     try { ws.close(); } catch { /* already closed */ }
   }
 }
 
+/** Global counter for generating unique log entry IDs. */
 let logIdCounter = 0;
 
+/**
+ * Primary application hook for the DTN Crypto Simulator.
+ *
+ * @returns An object containing all state values, setter functions, and action
+ * callbacks needed by the application. See individual property descriptions
+ * for details.
+ *
+ * @returns config - Current simulation configuration.
+ * @returns updateConfig - Partial-patch updater for the config.
+ * @returns status - Current simulation lifecycle state (`"idle"`, `"running"`, `"done"`, `"error"`).
+ * @returns statusText - Human-readable status message displayed in the top nav.
+ * @returns events - Array of all simulation events received so far.
+ * @returns metrics - Current metrics (empty defaults before first simulation).
+ * @returns result - Complete simulation result, or null if not yet completed.
+ * @returns bundleDetails - Map of bundle IDs to their detailed information.
+ * @returns nodeDetails - Map of node IDs to their detailed information.
+ * @returns selectedTarget - Current inspector panel target (bundle, node, or null).
+ * @returns selectBundle - Select a bundle for inspection by ID.
+ * @returns selectNode - Select a node for inspection by ID.
+ * @returns clearSelection - Close the inspector panel.
+ * @returns sidebarCollapsed - Whether the left sidebar is collapsed.
+ * @returns bottomPanelOpen - Whether the bottom metrics panel is open.
+ * @returns toggleSidebar - Toggle sidebar collapsed state.
+ * @returns toggleBottomPanel - Toggle bottom panel open/closed.
+ * @returns run - Start a new simulation with the current config.
+ * @returns reset - Reset all state to defaults and close any active connection.
+ * @returns exportResults - Download the full simulation result as JSON.
+ * @returns appLogs - Array of application log entries (newest first).
+ * @returns clearAppLogs - Clear all application log entries.
+ * @returns animationSpeed - Animation speed multiplier (0.5x - 3x).
+ * @returns setAnimationSpeed - Set the animation speed multiplier.
+ * @returns theme - Current UI theme (`"dark"` or `"light"`).
+ * @returns toggleTheme - Toggle between dark and light themes.
+ * @returns bundleFilter - Current bundle list filter (`"all"`, `"delivered"`, `"dropped"`, `"expired"`, `"intransit"`).
+ * @returns setBundleFilter - Set the bundle list filter.
+ * @returns filteredBundleDetails - Bundle details filtered by the current filter.
+ * @returns exportLogsCsv - Download the event log as a CSV file.
+ * @returns savePreset - Save the current config to localStorage.
+ * @returns loadPreset - Load a saved config from localStorage.
+ * @returns getPresets - Retrieve all saved presets from localStorage.
+ * @returns runId - Incrementing counter that resets on each new simulation (for D3 re-init).
+ */
 export function useSimulation() {
   const [config, setConfig] = useState<SimulationConfig>(defaultConfig);
   const [status, setStatus] = useState<SimStatus>("idle");
@@ -79,6 +180,10 @@ export function useSimulation() {
   const pendingEventsRef = useRef<SimulationEvent[]>([]);
   const flushTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /**
+   * Append a log entry to the application log.
+   * Entries are prepended (newest first) and capped at 500 entries.
+   */
   const addAppLog = useCallback((level: AppLogEntry["level"], message: string, detail?: string) => {
     const entry: AppLogEntry = {
       id: ++logIdCounter,
@@ -90,28 +195,35 @@ export function useSimulation() {
     setAppLogs((prev) => [entry, ...prev].slice(0, 500));
   }, []);
 
+  /** Partial-patch updater for simulation configuration. */
   const updateConfig = useCallback(
     (patch: Partial<SimulationConfig>) =>
       setConfig((prev) => ({ ...prev, ...patch })),
     [],
   );
 
+  /** Select a bundle for inspection in the right-side InspectorPanel. */
   const selectBundle = useCallback(
     (id: string) => setSelectedTarget({ type: "bundle", id }),
     [],
   );
 
+  /** Select a node for inspection in the NodeInspectorModal. */
   const selectNode = useCallback(
     (id: string) => setSelectedTarget({ type: "node", id }),
     [],
   );
 
+  /** Clear the inspector panel selection (close the panel). */
   const clearSelection = useCallback(() => setSelectedTarget(null), []);
 
+  /** Toggle the left sidebar collapsed/expanded state. */
   const toggleSidebar = useCallback(() => setSidebarCollapsed((prev) => !prev), []);
 
+  /** Toggle the bottom metrics panel open/closed. */
   const toggleBottomPanel = useCallback(() => setBottomPanelOpen((prev) => !prev), []);
 
+  /** Toggle between dark and light UI themes, updating the body class. */
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
       const next = prev === "dark" ? "light" : "dark";
@@ -120,13 +232,19 @@ export function useSimulation() {
     });
   }, []);
 
+  /** Clear all application log entries. */
   const clearAppLogs = useCallback(() => setAppLogs([]), []);
 
+  /**
+   * Export the current event log as a CSV file.
+   * Downloads a file named `dtn_events_{router}_{timestamp}.csv`.
+   */
   const exportLogsCsv = useCallback(() => {
     const headers = "Time,Type,From,To,Bundle ID,Latency\n";
     const rows = events.map((e) => {
-      const latency = e.latency != null ? e.latency.toFixed(2) : "";
-      return `${e.time.toFixed(2)},${e.type},${e.node_from || ""},${e.node_to || ""},${e.bundle_id || ""},${latency}`;
+      const lat = e.latency ?? (e.event_data?.latency as number | undefined);
+      const latencyStr = lat != null ? lat.toFixed(2) : "";
+      return `${e.time.toFixed(2)},${e.type},${e.node_from || ""},${e.node_to || ""},${e.bundle_id || ""},${latencyStr}`;
     }).join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv" });
     const a = document.createElement("a");
@@ -136,6 +254,10 @@ export function useSimulation() {
     URL.revokeObjectURL(a.href);
   }, [events, config.router]);
 
+  /**
+   * Save the current configuration as a named preset in localStorage.
+   * @param name - User-friendly name for the preset.
+   */
   const savePreset = useCallback((name: string) => {
     const presets = JSON.parse(localStorage.getItem("dtn_presets") || "[]");
     presets.push({ name, config, savedAt: Date.now() });
@@ -143,15 +265,29 @@ export function useSimulation() {
     addAppLog("success", `Preset "${name}" saved`);
   }, [config, addAppLog]);
 
+  /**
+   * Load a saved preset, replacing the current configuration.
+   * @param preset - Preset object containing a name and config.
+   */
   const loadPreset = useCallback((preset: { name: string; config: SimulationConfig }) => {
     setConfig(preset.config);
     addAppLog("info", `Preset "${preset.name}" loaded`);
   }, [addAppLog]);
 
+  /**
+   * Retrieve all saved presets from localStorage.
+   * @returns Array of preset objects sorted by save time (newest first).
+   */
   const getPresets = useCallback(() => {
     return JSON.parse(localStorage.getItem("dtn_presets") || "[]");
   }, []);
 
+  /**
+   * Flush all pending events into React state.
+   *
+   * Events are batched in `pendingEventsRef` and flushed every 50ms to avoid
+   * 500+ React re-renders per second during high-throughput simulations.
+   */
   const flushPendingEvents = useCallback(() => {
     if (flushTimeoutRef.current) {
       clearTimeout(flushTimeoutRef.current);
@@ -163,6 +299,10 @@ export function useSimulation() {
     setEvents((prev) => [...prev, ...batch]);
   }, []);
 
+  /**
+   * Reset all simulation state to initial values and close any active WebSocket.
+   * Returns the app to the idle state with an empty event log.
+   */
   const reset = useCallback(() => {
     safeClose(wsRef.current);
     wsRef.current = null;
@@ -180,6 +320,13 @@ export function useSimulation() {
     addAppLog("info", "Simulation reset");
   }, [addAppLog, flushPendingEvents]);
 
+  /**
+   * Start a new simulation with the current configuration.
+   *
+   * Attempts WebSocket connection first for real-time streaming. Falls back
+   * to REST API if WebSocket is unavailable. Events are batched at 50ms
+   * intervals to prevent excessive re-renders.
+   */
   const run = useCallback(() => {
     if (status === "running") return;
     safeClose(wsRef.current);
@@ -202,6 +349,10 @@ export function useSimulation() {
     eventCountRef.current = 0;
     addAppLog("info", "Starting simulation", `${config.router} | ${config.nodes} nodes | ${config.duration}s | ${config.scenario}`);
 
+    /**
+     * Fallback to REST API when WebSocket is unavailable.
+     * Replays all events in batches of 20 with requestAnimationFrame delays.
+     */
     async function fallbackRest() {
       addAppLog("warn", "WebSocket unavailable, falling back to REST API");
       setStatusText("Running via REST API...");
@@ -303,9 +454,7 @@ export function useSimulation() {
       };
 
       ws.onclose = () => {
-        if (status === "running") {
-          addAppLog("warn", "WebSocket closed unexpectedly");
-        }
+        addAppLog("warn", "WebSocket closed unexpectedly");
       };
     } catch (e) {
       addAppLog("error", "Failed to create WebSocket", e instanceof Error ? e.message : String(e));
@@ -313,6 +462,10 @@ export function useSimulation() {
     }
   }, [config, status, addAppLog, flushPendingEvents]);
 
+  /**
+   * Export the complete simulation result as a JSON file.
+   * Downloads a file named `dtn_sim_{router}_{timestamp}.json`.
+   */
   const exportResults = useCallback(() => {
     if (!result) return;
     const blob = new Blob([JSON.stringify(result, null, 2)], {
@@ -326,6 +479,10 @@ export function useSimulation() {
     addAppLog("info", "Results exported to JSON");
   }, [result, config.router, addAppLog]);
 
+  /**
+   * Compute filtered bundle details based on the current filter.
+   * @returns Filtered array of BundleDetail objects.
+   */
   const filteredBundleDetails = useCallback(() => {
     const all = Object.values(bundleDetails);
     if (bundleFilter === "all") return all;

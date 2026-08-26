@@ -1,7 +1,34 @@
+/**
+ * @module components/WikiModal
+ * @description Full-screen modal displaying the DTN Crypto wiki documentation.
+ *
+ * Covers DTN concepts, hybrid encryption, bundle structure, routing algorithms,
+ * simulation scenarios, and feature highlights. Click the overlay or close button
+ * to dismiss.
+ *
+ * @example
+ * ```tsx
+ * {showWiki && <WikiModal onClose={() => setShowWiki(false)} />}
+ * ```
+ */
+
+/** Props for the WikiModal component. */
 interface Props {
-    onClose: () => void;
+  /** Callback to close the wiki modal. */
+  onClose: () => void;
 }
 
+/**
+ * Wiki documentation modal.
+ *
+ * Renders a scrollable content panel with sections for:
+ * - What is DTN?
+ * - Hybrid Encryption (RSA-AES + CP-ABE)
+ * - Bundle Structure
+ * - Routing Algorithms (Epidemic, PRoPHET, Spray-and-Wait)
+ * - Simulation Scenarios (Disaster, Deep Space, Military)
+ * - Features (path visualization, timing waterfall, etc.)
+ */
 export default function WikiModal({ onClose }: Props) {
     return (
         <div className="wiki-overlay" onClick={onClose}>

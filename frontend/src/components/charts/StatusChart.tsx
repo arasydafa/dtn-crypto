@@ -1,3 +1,16 @@
+/**
+ * @module components/charts/StatusChart
+ * @description Doughnut chart showing bundle status distribution (delivered, in-transit, dropped, expired).
+ *
+ * Uses Chart.js doughnut controller. When final metrics are available, uses
+ * those directly. Otherwise, counts statuses from the live event stream.
+ *
+ * @example
+ * ```tsx
+ * <StatusChart metrics={metrics} events={sim.events} />
+ * ```
+ */
+
 import { useRef, useEffect } from "react";
 import {
     Chart,
@@ -9,15 +22,29 @@ import type { MetricsResponse, SimulationEvent } from "../../types";
 
 Chart.register(DoughnutController, ArcElement, Legend);
 
+/** Props for the StatusChart component. */
 interface Props {
-    metrics: MetricsResponse;
-    events: SimulationEvent[];
+  /** Current simulation metrics. */
+  metrics: MetricsResponse;
+
+  /** Array of simulation events for live status counting. */
+  events: SimulationEvent[];
 }
 
+/**
+ * Bundle status doughnut chart.
+ *
+ * Segments:
+ * - **Delivered** (green) — bundles that reached their destination
+ * - **In-Transit** (yellow) — bundles currently being forwarded
+ * - **Dropped** (red) — bundles dropped due to buffer/hop limits
+ * - **Expired** (gray) — bundles that exceeded their TTL
+ */
 export default function StatusChart({ metrics, events }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const chartRef = useRef<Chart | null>(null);
 
+    /** Initialize the Chart.js doughnut on mount. */
     useEffect(() => {
         if (!canvasRef.current) return;
         const chart = new Chart(canvasRef.current, {
@@ -55,6 +82,7 @@ export default function StatusChart({ metrics, events }: Props) {
         };
     }, []);
 
+    /** Update chart data when metrics or events change. */
     useEffect(() => {
         const chart = chartRef.current;
         if (!chart) return;

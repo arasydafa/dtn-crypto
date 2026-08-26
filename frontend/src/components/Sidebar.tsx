@@ -1,26 +1,83 @@
+/**
+ * @module components/Sidebar
+ * @description Left sidebar with simulation configuration, scenario selection, presets,
+ * bundle list, and export controls.
+ *
+ * When collapsed, shows icon-only buttons. When expanded, displays full
+ * configuration controls (router, nodes, duration, message rate, priority),
+ * animation speed, custom payload input, scenario buttons, preset save/load,
+ * bundle filter chips, and a scrollable bundle list.
+ *
+ * @example
+ * ```tsx
+ * <Sidebar
+ *   collapsed={sim.sidebarCollapsed}
+ *   config={sim.config}
+ *   onConfigChange={sim.updateConfig}
+ *   ...
+ * />
+ * ```
+ */
+
 import type { SimulationConfig, BundleDetail, InspectorTarget } from "../types";
 import FileUpload from "./FileUpload";
 import { useState } from "react";
 
+/** Props for the Sidebar component. */
 interface Props {
-    collapsed: boolean;
-    config: SimulationConfig;
-    onConfigChange: (patch: Partial<SimulationConfig>) => void;
-    bundleDetails: BundleDetail[];
-    onSelectBundle: (id: string) => void;
-    selectedTarget: InspectorTarget;
-    animationSpeed: number;
-    onAnimationSpeedChange: (speed: number) => void;
-    bundleFilter: string;
-    onBundleFilterChange: (filter: string) => void;
-    onSavePreset: (name: string) => void;
-    onLoadPreset: (preset: { name: string; config: SimulationConfig }) => void;
-    getPresets: () => Array<{ name: string; config: SimulationConfig; savedAt: number }>;
-    onExportCsv: () => void;
-    hasEvents: boolean;
-    onToggleSidebar: () => void;
+  /** Whether the sidebar is collapsed (icon-only mode). */
+  collapsed: boolean;
+
+  /** Current simulation configuration. */
+  config: SimulationConfig;
+
+  /** Partial-patch updater for the configuration. */
+  onConfigChange: (patch: Partial<SimulationConfig>) => void;
+
+  /** Filtered array of bundle details for the bundle list. */
+  bundleDetails: BundleDetail[];
+
+  /** Select a bundle for inspection by ID. */
+  onSelectBundle: (id: string) => void;
+
+  /** Current inspector panel target (for highlighting selected bundle). */
+  selectedTarget: InspectorTarget;
+
+  /** Animation speed multiplier (0.5x - 3x). */
+  animationSpeed: number;
+
+  /** Set the animation speed multiplier. */
+  onAnimationSpeedChange: (speed: number) => void;
+
+  /** Current bundle list filter. */
+  bundleFilter: string;
+
+  /** Set the bundle list filter. */
+  onBundleFilterChange: (filter: string) => void;
+
+  /** Save the current config as a named preset. */
+  onSavePreset: (name: string) => void;
+
+  /** Load a saved preset. */
+  onLoadPreset: (preset: { name: string; config: SimulationConfig }) => void;
+
+  /** Retrieve all saved presets from localStorage. */
+  getPresets: () => Array<{ name: string; config: SimulationConfig; savedAt: number }>;
+
+  /** Export the event log as CSV. */
+  onExportCsv: () => void;
+
+  /** Whether simulation events exist (enables export button). */
+  hasEvents: boolean;
+
+  /** Toggle sidebar collapsed state. */
+  onToggleSidebar: () => void;
 }
 
+/**
+ * Preset scenario definitions.
+ * Each scenario configures contact patterns and bandwidth for a specific use case.
+ */
 const scenarios = [
     {
         key: "disaster" as const,
@@ -39,6 +96,7 @@ const scenarios = [
     },
 ];
 
+/** Gear icon SVG for the Configuration section. */
 const iconConfig = (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
@@ -46,6 +104,7 @@ const iconConfig = (
     </svg>
 );
 
+/** Document icon SVG for the Custom Payload section. */
 const iconPayload = (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -56,6 +115,7 @@ const iconPayload = (
     </svg>
 );
 
+/** Layers icon SVG for the Scenarios section. */
 const iconScenario = (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polygon points="12 2 2 7 12 12 22 7 12 2" />
@@ -64,6 +124,7 @@ const iconScenario = (
     </svg>
 );
 
+/** Box icon SVG for the Bundles section. */
 const iconBundles = (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -72,12 +133,14 @@ const iconBundles = (
     </svg>
 );
 
+/** Lightning bolt icon SVG for the Animation section. */
 const iconSpeed = (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
     </svg>
 );
 
+/** Save icon SVG for the Presets section. */
 const iconPreset = (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
@@ -86,6 +149,7 @@ const iconPreset = (
     </svg>
 );
 
+/** Bundle list filter options. */
 const filterOptions = [
     { key: "all", label: "All" },
     { key: "delivered", label: "Delivered" },
@@ -94,6 +158,21 @@ const filterOptions = [
     { key: "intransit", label: "In Transit" },
 ];
 
+/**
+ * Left sidebar component.
+ *
+ * **Collapsed mode**: Shows icon-only buttons that expand the sidebar on click.
+ *
+ * **Expanded mode**: Full configuration panel with sections:
+ * - Configuration (router, nodes, duration, message rate)
+ * - Animation (speed slider)
+ * - Custom Payload (text area + file upload)
+ * - Scenarios (disaster, deep space, military)
+ * - Presets (save/load from localStorage)
+ * - Bundles (filter chips + scrollable list)
+ * - Export CSV button
+ * - Credit line
+ */
 export default function Sidebar({
     collapsed,
     config,

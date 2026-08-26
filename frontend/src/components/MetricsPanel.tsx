@@ -1,3 +1,23 @@
+/**
+ * @module components/MetricsPanel
+ * @description Bottom panel with tabbed views for charts, simulation events, and application logs.
+ *
+ * When collapsed, shows a compact summary bar with key metrics. When open,
+ * displays three tabs: Charts (delivery gauge, latency, crypto, status),
+ * Sim Events (chronological event log), and App Log (connection/progress logs).
+ *
+ * @example
+ * ```tsx
+ * <MetricsPanel
+ *   metrics={sim.metrics}
+ *   events={sim.events}
+ *   open={sim.bottomPanelOpen}
+ *   appLogs={sim.appLogs}
+ *   onClearAppLogs={sim.clearAppLogs}
+ * />
+ * ```
+ */
+
 import { useState } from "react";
 import type { MetricsResponse, SimulationEvent } from "../types";
 import type { AppLogEntry } from "../hooks/useSimulation";
@@ -5,17 +25,40 @@ import DeliveryGauge from "./charts/DeliveryGauge";
 import LatencyChart from "./charts/LatencyChart";
 import CryptoChart from "./charts/CryptoChart";
 import StatusChart from "./charts/StatusChart";
+import HopDistributionChart from "./charts/HopDistributionChart";
+import NetworkStats from "./NetworkStats";
 import EventLog from "./EventLog";
 import AppLog from "./AppLog";
 
+/** Props for the MetricsPanel component. */
 interface Props {
-    metrics: MetricsResponse;
-    events: SimulationEvent[];
-    open: boolean;
-    appLogs: AppLogEntry[];
-    onClearAppLogs: () => void;
+  /** Current simulation metrics. */
+  metrics: MetricsResponse;
+
+  /** Array of all simulation events. */
+  events: SimulationEvent[];
+
+  /** Whether the panel is currently open (expanded). */
+  open: boolean;
+
+  /** Array of application log entries. */
+  appLogs: AppLogEntry[];
+
+  /** Callback to clear all application log entries. */
+  onClearAppLogs: () => void;
 }
 
+/**
+ * Bottom metrics panel with tabbed interface.
+ *
+ * **Collapsed state**: Shows a horizontal summary bar with delivered count,
+ * delivery ratio, latency, crypto overhead, dropped, expired, and event count.
+ *
+ * **Expanded state**: Three tabs:
+ * - Charts — DeliveryGauge, LatencyChart, CryptoChart, StatusChart
+ * - Sim Events — EventLog with chronological event list
+ * - App Log — AppLog with connection/progress entries
+ */
 export default function MetricsPanel({ metrics, events, open, appLogs, onClearAppLogs }: Props) {
     const [tab, setTab] = useState<"charts" | "events" | "applog">("charts");
 
@@ -95,11 +138,13 @@ export default function MetricsPanel({ metrics, events, open, appLogs, onClearAp
 
             <div className="bottom-content">
                 {tab === "charts" && (
-                    <div className="bottom-charts">
+                    <div className="bottom-charts" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
                         <DeliveryGauge metrics={metrics} delivered={delivered} total={total} />
                         <LatencyChart events={events} />
                         <CryptoChart metrics={metrics} />
                         <StatusChart metrics={metrics} events={events} />
+                        <HopDistributionChart metrics={metrics} />
+                        <NetworkStats metrics={metrics} events={events} />
                     </div>
                 )}
                 {tab === "events" && <EventLog events={events} />}
