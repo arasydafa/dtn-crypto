@@ -1,15 +1,4 @@
-<!-- README.md — Project documentation for dtn-crypto. -->
-<!-- Purpose: Provides comprehensive documentation including installation, -->
-<!--          usage examples, API reference, and contribution guidelines. -->
-
 # dtn-crypto
-<!--
-[![Build Status](https://github.com/dtn-crypto/dtn-crypto/actions/workflows/test.yml/badge.svg)](https://github.com/dtn-crypto/dtn-crypto/actions/workflows/test.yml)
-[![Coverage](https://codecov.io/gh/dtn-crypto/dtn-crypto/branch/main/graph/badge.svg)](https://codecov.io/gh/dtn-crypto/dtn-crypto)
-[![PyPI Version](https://img.shields.io/pypi/v/dtn-crypto)](https://pypi.org/project/dtn-crypto/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python Version](https://img.shields.io/pypi/pyversions/dtn-crypto)](https://pypi.org/project/dtn-crypto/)
--->
 
 **Hybrid RSA-AES + CP-ABE encryption library, DTN network simulator, and web-based visualization for Delay-Tolerant Networks.**
 
@@ -22,11 +11,10 @@ dtn-crypto provides layered cryptographic protection for DTN bundle payloads, co
 - [Features](#features)
 - [Architecture](#architecture)
 - [Installation](#installation)
-- [Phase 1: Cryptography Library](#phase-1-cryptography-library)
-- [Phase 2: DTN Simulator](#phase-2-dtn-simulator)
-- [Phase 3: Web UI and PCAP Capture](#phase-3-web-ui-and-pcap-capture)
-- [Phase 4: Integrity, Timing, and Payload Enhancements](#phase-4-integrity-timing-and-payload-enhancements)
-- [Phase 5: Advanced Web UI and Inspector](#phase-5-advanced-web-ui-and-inspector)
+- [Quick Start](#quick-start)
+- [Cryptography Library](#cryptography-library)
+- [DTN Simulator](#dtn-simulator)
+- [Web UI and PCAP Capture](#web-ui-and-pcap-capture)
 - [API Reference](#api-reference)
 - [Running Tests](#running-tests)
 - [Project Structure](#project-structure)
@@ -38,52 +26,41 @@ dtn-crypto provides layered cryptographic protection for DTN bundle payloads, co
 
 ## Features
 
-### Cryptography (Phase 1)
+### Cryptography
 - **Hybrid RSA-AES encryption** -- RSA-OAEP key wrapping + AES-256-GCM bulk encryption
 - **CP-ABE policy-based access control** -- Boolean attribute policies (AND/OR/nested)
 - **DTN bundle wrapping** -- Two-layer encryption in a serializable bundle format
 - **Full key lifecycle** -- Generation, serialization (PEM), and deserialization
-- **Serialization** -- All crypto objects serialize to JSON-safe dictionaries
+- **SHA-256 bundle integrity** -- Plaintext hash computed before encryption, verified after decryption
 - **Type-safe** -- Complete type annotations on every function
 - **Minimal dependencies** -- Only `cryptography` for production use
 
-### Simulator (Phase 2)
+### Simulator
 - **3 routing algorithms** -- Epidemic, PRoPHET (probabilistic with predictability aging + transitivity), Spray-and-Wait (binary mode)
 - **Discrete-event simulation** -- heapq priority queue for chronological event processing
 - **Crypto integration** -- Real hybrid RSA-AES + CP-ABE encryption on every bundle
 - **3 preset scenarios** -- Deep space, disaster relief, military operations
 - **Metrics collection** -- JSON + CSV export, comparison tables across routers
 - **Custom configurations** -- JSON config files for arbitrary scenarios
+- **Transmission timing** -- Simulated per-hop timing based on link bandwidth
 
-### Web UI and PCAP (Phase 3)
-- **Real-time web dashboard** -- React + TypeScript SPA with D3.js force-directed network graph + Chart.js metrics
-- **Responsive design** -- Mobile-friendly layout with breakpoints at 900px and 600px
+### Web UI
+- **Real-time web dashboard** -- React + TypeScript SPA with D3.js network graph + Chart.js metrics
+- **4 graph layouts** -- Force-directed, circular, grid, tree (switchable without restarting simulation)
 - **WebSocket live streaming** -- Events stream in real-time during simulation
-- **BPv7 PCAP capture** -- Wireshark-readable packet captures using RFC 9171 CBOR encoding
-- **Live UDP packets** -- Real-time Wireshark capture via localhost UDP
-- **REST API** -- FastAPI backend with POST /simulate, GET /scenarios, GET /health
-- **Single-command startup** -- `uvicorn api.app:app` serves both API and frontend
+- **Event type filters** -- Filter event log by CONTACT, CREATE, TRANSFER, DELIVER, EXPIRE, DROP, INTEGRITY
+- **Node inspector** -- Click any node to view crypto credentials, bundle buffer, and statistics
+- **Bundle inspector** -- View path timeline, per-hop timing, and content stages
+- **Network statistics panel** -- Research-oriented metrics (delivery ratio, avg latency, hop distribution, crypto overhead)
+- **Latency chart tooltips** -- Hover to see exact values with axis labels
+- **Path highlighting** -- Selected bundle's path highlighted on the network graph
+- **Responsive design** -- Adapts from desktop to mobile
 
-### Integrity, Timing, and Payloads (Phase 4)
-- **SHA-256 bundle integrity** -- Plaintext hash computed before encryption, verified after decryption at destination
-- **End-to-end verification** -- Proves payload integrity through untrusted relay nodes
-- **Transmission timing** -- Simulated transmission time based on link bandwidth per scenario
-- **Timing breakdown** -- Encrypt, transmit, and decrypt overhead displayed in dashboard
-- **Custom payloads** -- CLI flags `--payload-file` and `--payload-text` for user-defined content
-- **Web payload input** -- Text area in sidebar for custom payload via web UI
-- **File validation** -- `.txt` files only, 1MB size limit, mutual exclusivity enforcement
-
-### Advanced Web UI and Inspector (Phase 5)
-- **Modern glassmorphism design** -- Backdrop blur, semi-transparent glass panels, gradient accents, Inter font
-- **Bundle path visualization** -- View the complete journey of each bundle through relay nodes with timing per hop
-- **Message content inspection** -- View plaintext (source), encrypted (transit), and decrypted (destination) content stages
-- **Timing waterfall chart** -- Per-bundle horizontal stacked bar showing encrypt/transmit/decrypt time breakdown
-- **Crypto key management panel** -- Inspect RSA public key PEM previews and CP-ABE attributes per node
-- **Node inspector** -- Click any node in the graph to view its crypto credentials and statistics
-- **Bundle inspector** -- Select bundles from sidebar list to view path, timing, and content details
-- **File upload for payloads** -- Upload `.txt` files directly via drag-and-drop style button in sidebar
-- **Path highlighting** -- Selected bundle's path is highlighted on the network graph with glow effect
-- **Fixed metrics panel** -- Bottom panel always visible with explicit 220px grid row (CSS bug fix)
+### Infrastructure
+- **UV package manager** -- Fast Python dependency management with lockfile
+- **Hatchling build backend** -- Modern Python packaging
+- **Docker support** -- Multi-stage production build + dev hot-reload
+- **Security hardening** -- CORS allowlist, security headers, SPA path containment, error sanitization
 
 ---
 
@@ -152,48 +129,73 @@ System Architecture:
 
 ## Installation
 
-### From PyPI
+### Prerequisites
+
+- Python 3.11+
+- Node.js 20+ (for frontend)
+- [UV](https://docs.astral.sh/uv/) (recommended) or pip
+
+### Using UV (Recommended)
 
 ```bash
-pip install dtn-crypto
-```
-
-### From source (all features)
-
-```bash
-git clone https://github.com/dtn-crypto/dtn-crypto.git
+# Clone the repository
+git clone https://github.com/arasydafa/dtn-crypto.git
 cd dtn-crypto
-pip install -e ".[all]"
+
+# Install UV (if not installed)
+pip install uv
+
+# Install all dependencies (crypto + simulator + API)
+uv sync --extra simulator
+
+# Install with dev dependencies (tests + lint)
+uv sync --extra simulator --extra dev
 ```
 
-### Minimal (crypto library only)
+### Using pip
 
 ```bash
-pip install -e .
-```
+git clone https://github.com/arasydafa/dtn-crypto.git
+cd dtn-crypto
 
-### Development (crypto + tests + lint)
-
-```bash
-pip install -e ".[dev]"
-```
-
-### Simulator + Web UI
-
-```bash
+# Install with all features
 pip install -e ".[simulator,dev]"
+```
+
+### Docker
+
+```bash
+# Production build
+docker compose --profile production build
+docker compose --profile production up
+
+# Development with hot-reload
+docker compose --profile dev up app-dev
+
+# Access at http://localhost:8000
+```
+
+### Frontend Development
+
+```bash
+cd frontend
+npm install
+
+# Development with hot-reload (port 5173)
+npm run dev
+
+# Build for production
+npm run build
 ```
 
 ---
 
-## Phase 1: Cryptography Library
+## Quick Start
 
-### Quickstart
+### Python API
 
 ```python
-from dtn_crypto import (
-    CPABEService, Policy, BundleBuilder, generate_rsa_keypair,
-)
+from dtn_crypto import CPABEService, Policy, BundleBuilder, generate_rsa_keypair
 
 # Setup crypto systems
 cpabe = CPABEService()
@@ -213,6 +215,32 @@ bundle = builder.create_secure_bundle(
 plaintext = bundle.decrypt_payload(priv_key, user_key, public_params, cpabe)
 assert plaintext == b"Hello from deep space!"
 ```
+
+### Web Dashboard
+
+```bash
+# Start the server
+uv run uvicorn api.app:app --reload --port 8000
+
+# Open http://localhost:8000 in your browser
+```
+
+### CLI Simulation
+
+```bash
+# Run simulation with Epidemic routing
+uv run python run_simulation.py --router epidemic --nodes 10 --duration 3600
+
+# Compare all 3 routers
+uv run python run_simulation.py --compare --scenario disaster --nodes 15
+
+# Enable PCAP capture for Wireshark
+uv run python run_simulation.py --router epidemic --nodes 10 --pcap
+```
+
+---
+
+## Cryptography Library
 
 ### Hybrid RSA-AES Encryption
 
@@ -246,40 +274,30 @@ assert matcher.evaluate(policy, ["role:doctor", "dept:emergency"]) is True
 assert matcher.evaluate(policy, ["role:nurse"]) is False
 ```
 
+### SHA-256 Bundle Integrity
+
+```python
+from dtn_crypto import BundleBuilder, BundleIntegrityError
+
+bundle = builder.create_secure_bundle(
+    payload=b"critical telemetry data",
+    source="sensor-1", destination="ground-station",
+    dest_public_key=pub_key, policy=Policy("role:operator"),
+)
+
+# Hash is stored in metadata
+print(bundle.metadata.payload_hash)  # e.g. "a3f2..."
+
+# Decryption verifies integrity automatically
+try:
+    plaintext = bundle.decrypt_payload(priv_key, user_key, pp, cpabe)
+except BundleIntegrityError:
+    print("Payload was tampered with during transit!")
+```
+
 ---
 
-## Phase 2: DTN Simulator
-
-### CLI Usage
-
-```bash
-# Run single simulation with Epidemic routing
-python run_simulation.py --router epidemic --nodes 10 --duration 3600
-
-# Run with PRoPHET routing in deep space scenario
-python run_simulation.py --router prophet --scenario deepspace --nodes 20
-
-# Spray-and-Wait with military scenario
-python run_simulation.py --router spray --scenario military --nodes 15
-
-# Compare all 3 routers side by side
-python run_simulation.py --compare --scenario disaster --nodes 15
-
-# Use a custom JSON configuration
-python run_simulation.py --config scenarios/custom.json
-
-# Enable PCAP capture for Wireshark
-python run_simulation.py --router epidemic --nodes 10 --pcap
-
-# Enable live UDP for real-time Wireshark capture
-python run_simulation.py --router epidemic --nodes 10 --pcap --live-udp
-
-# Run with a custom text payload
-python run_simulation.py --router epidemic --nodes 10 --payload-text "Hello DTN!"
-
-# Run with a custom file payload (.txt, max 1MB)
-python run_simulation.py --router epidemic --nodes 10 --payload-file message.txt
-```
+## DTN Simulator
 
 ### Routing Algorithms
 
@@ -291,65 +309,39 @@ python run_simulation.py --router epidemic --nodes 10 --payload-file message.txt
 
 ### Preset Scenarios
 
-| Scenario | Description | Contact Pattern |
+| Scenario | Description | Bandwidth |
 |---|---|---|
-| `deepspace` | Interplanetary DTN with long delays (minutes to hours), sparse contacts | Scheduled orbital windows |
-| `disaster` | Post-disaster mesh network with mobile nodes, intermittent contacts | Random mobility-based |
-| `military` | Tactical military network with group formations and limited inter-group links | Formation-based with jamming |
+| `deepspace` | Interplanetary DTN with long delays, sparse contacts | 1,000 bps |
+| `disaster` | Post-disaster mesh network with mobile nodes | 100,000 bps |
+| `military` | Tactical military network with CP-ABE policy enforcement | 50,000 bps |
 
-### Custom Configuration (JSON)
+### Custom Configuration
 
-```json
-{
-  "nodes": 12,
-  "duration": 1800,
-  "contacts": [
-    {"node_a": 0, "node_b": 1, "start": 0, "end": 600, "bandwidth": 1000},
-    {"node_a": 1, "node_b": 2, "start": 300, "end": 900, "bandwidth": 500}
-  ],
-  "messages": [
-    {"source": 0, "destination": 5, "time": 10, "size": 1024}
-  ]
-}
+```bash
+# Use a custom JSON configuration
+uv run python run_simulation.py --config scenarios/custom.json
+
+# Run with a custom text payload
+uv run python run_simulation.py --router epidemic --nodes 10 --payload-text "Hello DTN!"
+
+# Run with a custom file payload (.txt, max 1MB)
+uv run python run_simulation.py --router epidemic --nodes 10 --payload-file message.txt
 ```
 
 ---
 
-## Phase 3: Web UI and PCAP Capture
-
-### Starting the Web Server
-
-```bash
-# Start FastAPI server (serves both API and React frontend)
-uvicorn api.app:app --reload --port 8000
-
-# Open http://localhost:8000 in your browser
-# WebSocket: ws://localhost:8000/ws/live for real-time streaming
-# Falls back to POST http://localhost:8000/simulate for REST mode
-```
-
-### Frontend Development
-
-```bash
-# For development with hot reload
-cd frontend
-npm run dev
-
-# Build for production (output in frontend/dist)
-cd frontend
-npm run build
-```
+## Web UI and PCAP Capture
 
 ### Web Dashboard Features
 
-- **Network Graph**: D3.js force-directed visualization showing nodes, active contacts (animated links), and bundle transfers (moving dots)
-- **Metrics Panel**: Real-time charts showing delivery ratio, latency over time, crypto/transmission overhead, and bundle status distribution
-- **Controls**: Router selection, node count (5-50), duration (60-7200s), message rate slider, preset scenario buttons
-- **Custom Payload**: Text area for entering custom payload text directly in the sidebar
-- **Integrity Tracking**: Integrity failure count displayed in metrics
-- **Transmission Timing**: Encrypt, decrypt, and transmit overhead shown in the crypto chart
-- **Responsive Layout**: Adapts from desktop (sidebar + graph + bottom charts) to mobile (stacked)
-- **Export**: Download simulation results as JSON
+- **Network Graph**: D3.js visualization with 4 layout modes (force, circular, grid, tree)
+- **Real-time Streaming**: WebSocket events during simulation
+- **Event Filters**: Filter by CONTACT, CREATE, TRANSFER, DELIVER, EXPIRE, DROP, INTEGRITY
+- **Node Inspector**: Click nodes to view RSA keys, CP-ABE attributes, bundle buffer
+- **Bundle Inspector**: View path timeline, per-hop timing, plaintext/encrypted content
+- **Metrics Panel**: Delivery ratio, latency chart, crypto overhead, hop distribution
+- **Network Statistics**: Research-oriented stats (total bundles, transfers, unique pairs, integrity failures)
+- **Responsive Layout**: Adapts from desktop to mobile
 
 ### REST API Endpoints
 
@@ -391,7 +383,7 @@ ws.onopen = () => {
 };
 ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    // data.type: "CONTACT_START", "BUNDLE_TRANSFER", "DELIVERY", "FINAL_RESULT", etc.
+    // data.type: "CONTACT_START", "BUNDLE_TRANSFER", "DELIVER", "FINAL_RESULT", etc.
     console.log(data);
 };
 ```
@@ -403,97 +395,23 @@ The simulator generates Wireshark-readable PCAP files containing BPv7 (Bundle Pr
 #### Generating a PCAP file
 
 ```bash
-# Via CLI
-python run_simulation.py --router epidemic --nodes 10 --pcap
-
-# Output: results/bundles.pcap
+uv run python run_simulation.py --router epidemic --nodes 10 --pcap
+# Output: results/bundles_epidemic.pcap
 ```
 
 #### Real-time Wireshark Capture
 
 ```bash
-# Start simulation with live UDP packets
-python run_simulation.py --router epidemic --nodes 10 --pcap --live-udp
-
+uv run python run_simulation.py --router epidemic --nodes 10 --pcap --live-udp
 # In Wireshark: capture on loopback interface, filter: udp.port == 4556
 ```
 
 #### Viewing in Wireshark
 
-1. Open the generated `.pcap` file in Wireshark
+1. Open the `.pcap` file in Wireshark
 2. Right-click any UDP packet -> **Decode As** -> select **BPv7**
-   (or set UDP port 4556 to decode as BPv7 in Edit -> Preferences -> Protocols -> BPv7)
-3. Expand the **"Bundle Protocol Version 7"** tree to inspect:
-   - Bundle version (7)
-   - Bundle processing control flags
-   - Source / Destination endpoint IDs (`dtn://nodeX/`)
-   - Creation timestamp and sequence number
-   - Bundle lifetime
-   - Payload block content
-4. Each frame represents one bundle transfer between nodes during the simulation,
-   wrapped in standard Ethernet/IPv4/UDP headers for Wireshark compatibility
-
-#### PCAP Technical Details
-
-- **Protocol**: BPv7 over UDP port 4556
-- **Encoding**: CBOR (RFC 8949) as specified by RFC 9171
-- **Frame structure**: Ethernet II -> IPv4 -> UDP -> BPv7 CBOR bundle
-- **Node addressing**: Deterministic IP (10.0.X.X) and MAC mapping per node
-- **Endpoint IDs**: DTN scheme URIs (`dtn://node-X/`)
-
----
-
-## Phase 4: Integrity, Timing, and Payload Enhancements
-
-### SHA-256 Bundle Integrity (R1)
-
-Every bundle payload is hashed with SHA-256 before encryption. The hash is stored in `BundleMetadata.payload_hash` and travels with the bundle through untrusted relay nodes. At the destination, after decryption, the hash is recomputed and verified. A mismatch raises `BundleIntegrityError`.
-
-```python
-from dtn_crypto import BundleBuilder, BundleIntegrityError
-
-# Bundle creation automatically computes SHA-256 hash
-bundle = builder.create_secure_bundle(
-    payload=b"critical telemetry data",
-    source="sensor-1", destination="ground-station",
-    dest_public_key=pub_key, policy=Policy("role:operator"),
-)
-
-# Hash is stored in metadata
-print(bundle.metadata.payload_hash)  # e.g. "a3f2..."
-
-# Decryption verifies integrity automatically
-try:
-    plaintext = bundle.decrypt_payload(priv_key, user_key, pp, cpabe)
-except BundleIntegrityError:
-    print("Payload was tampered with during transit!")
-```
-
-### Transmission Timing (R3)
-
-Each scenario defines a `link_bandwidth_bps` parameter. The simulator computes transmission time for each hop:
-
-```
-transmission_time_ms = (payload_size_bytes * 8 / link_bandwidth_bps) * 1000
-```
-
-| Scenario | Bandwidth | Typical TX Time (1KB) |
-|---|---|---|
-| Deep Space | 1,000 bps | 8,192 ms |
-| Disaster | 100,000 bps | 81.9 ms |
-| Military | 50,000 bps | 163.8 ms |
-
-### Custom Payloads (R2)
-
-```bash
-# Via CLI - text string
-python run_simulation.py --router epidemic --payload-text "Custom message"
-
-# Via CLI - file (.txt only, max 1MB)
-python run_simulation.py --router epidemic --payload-file data.txt
-```
-
-Via the web API, include `payload_text` in the `SimulationConfig` JSON body.
+3. Expand the **"Bundle Protocol Version 7"** tree to inspect bundle fields
+4. Each frame represents one bundle transfer between nodes
 
 ---
 
@@ -503,90 +421,68 @@ Via the web API, include `payload_text` in the `SimulationConfig` JSON body.
 
 | Function | Parameters | Returns | Description |
 |---|---|---|---|
-| `generate_rsa_keypair` | `key_size: int = 2048, public_exponent: int = 65537` | `tuple[RSAPrivateKey, RSAPublicKey]` | Generate an RSA key pair (min 2048-bit) |
-| `generate_aes_key` | `key_size: int = 256` | `bytes` | Generate a random AES key (128/192/256-bit) |
-| `serialize_private_key` | `private_key, password: Optional[bytes]` | `bytes` | Serialize RSA private key to PEM |
-| `deserialize_private_key` | `pem_data: bytes, password: Optional[bytes]` | `RSAPrivateKey` | Deserialize RSA private key from PEM |
+| `generate_rsa_keypair` | `key_size: int = 2048` | `tuple[RSAPrivateKey, RSAPublicKey]` | Generate RSA key pair (min 2048-bit) |
+| `generate_aes_key` | `key_size: int = 256` | `bytes` | Generate random AES key (128/192/256-bit) |
+| `serialize_private_key` | `private_key, password=None` | `bytes` | Serialize RSA private key to PEM |
 | `serialize_public_key` | `public_key` | `bytes` | Serialize RSA public key to PEM |
-| `deserialize_public_key` | `pem_data: bytes` | `RSAPublicKey` | Deserialize RSA public key from PEM |
 | `bytes_to_base64` | `data: bytes` | `str` | Encode bytes to URL-safe base64 |
 | `base64_to_bytes` | `data: str` | `bytes` | Decode URL-safe base64 to bytes |
-| `current_timestamp` | | `float` | Current UTC timestamp |
 
 ### `dtn_crypto.rsa_aes`
 
 | Function / Class | Parameters | Returns | Description |
 |---|---|---|---|
-| `hybrid_encrypt` | `plaintext: bytes, public_key, aad: Optional[bytes]` | `HybridCiphertext` | Encrypt with RSA-AES hybrid (AES-256-GCM + RSA-OAEP) |
-| `hybrid_decrypt` | `hybrid_ct: HybridCiphertext, private_key` | `bytes` | Decrypt RSA-AES hybrid ciphertext |
-| `HybridCiphertext` | `encrypted_key, nonce, ciphertext, aad` | -- | Container for hybrid ciphertext components |
+| `hybrid_encrypt` | `plaintext, public_key, aad=None` | `HybridCiphertext` | RSA-AES hybrid encryption |
+| `hybrid_decrypt` | `hybrid_ct, private_key` | `bytes` | RSA-AES hybrid decryption |
 
 ### `dtn_crypto.cpabe`
 
 | Function / Class | Parameters | Returns | Description |
 |---|---|---|---|
-| `CPABEService.setup` | `key_id: Optional[str]` | `tuple[CPABEMasterKey, CPABEPublicParams]` | Initialize CP-ABE system |
-| `CPABEService.keygen` | `master_key, public_params, attributes: list[str]` | `CPABEUserKey` | Generate user key for attributes |
-| `CPABEService.encrypt` | `plaintext: bytes, public_params, policy: Policy` | `CPABECiphertext` | Encrypt under access policy |
-| `CPABEService.decrypt` | `cpabe_ct, user_key, public_params` | `bytes` | Decrypt with attribute-based key |
-| `Policy` | `policy_string: str` | -- | Access policy (e.g., `"role:doctor AND dept:er"`) |
-| `PolicyAttributeMatcher.evaluate` | `policy: Policy, attributes: list[str]` | `bool` | Check if attributes satisfy policy |
+| `CPABEService.setup` | `key_id=None` | `tuple[MasterKey, PublicParams]` | Initialize CP-ABE system |
+| `CPABEService.keygen` | `master_key, public_params, attributes` | `UserKey` | Generate user key for attributes |
+| `CPABEService.encrypt` | `plaintext, public_params, policy` | `Ciphertext` | Encrypt under access policy |
+| `CPABEService.decrypt` | `ct, user_key, public_params` | `bytes` | Decrypt with attribute-based key |
+| `Policy` | `policy_string: str` | -- | Access policy expression |
+| `PolicyAttributeMatcher.evaluate` | `policy, attributes` | `bool` | Check if attributes satisfy policy |
 
 ### `dtn_crypto.bundle`
 
 | Function / Class | Parameters | Returns | Description |
 |---|---|---|---|
-| `BundleBuilder` | `cpabe_service, cpabe_public_params` | -- | Factory for creating secure bundles |
-| `BundleBuilder.create_secure_bundle` | `payload, source, destination, dest_public_key, policy, ttl, priority` | `SecureBundle` | Create a dual-layer encrypted bundle with SHA-256 hash |
-| `SecureBundle.decrypt_payload` | `rsa_private_key, cpabe_user_key, cpabe_public_params, cpabe_service` | `bytes` | Decrypt both crypto layers and verify integrity |
-| `BundleMetadata` | `bundle_id, source, destination, creation_time, ttl, priority, payload_hash, ...` | -- | Bundle metadata header (includes SHA-256 hash) |
-| `BundlePriority` | `BULK=0, NORMAL=1, EXPEDITED=2, CRITICAL=3` | -- | Priority level enum |
-| `BundleIntegrityError` | -- | -- | Raised when payload hash verification fails after decryption |
-
-### Configuration Options
-
-| Option | Type | Default | Description |
-|---|---|---|---|
-| RSA key size | `int` | `2048` | RSA key size in bits (min 2048) |
-| AES key size | `int` | `256` | AES key size in bits (128/192/256) |
-| Bundle TTL | `int` | `3600` | Time-to-live in seconds |
-| Max hop count | `int` | `32` | Maximum hops before bundle drop |
-| Bundle priority | `BundlePriority` | `NORMAL` | Bundle priority level |
+| `BundleBuilder.create_secure_bundle` | `payload, source, destination, dest_public_key, policy` | `SecureBundle` | Create dual-layer encrypted bundle |
+| `SecureBundle.decrypt_payload` | `rsa_priv, cpabe_key, params, service` | `bytes` | Decrypt and verify integrity |
+| `BundleIntegrityError` | -- | -- | Raised when SHA-256 verification fails |
 
 ---
 
 ## Running Tests
 
 ```bash
-# Install all dependencies
-pip install -e ".[all]"
-
 # Run all tests
-pytest
+uv run pytest
 
-# Run with coverage (crypto library)
-pytest --cov=dtn_crypto --cov-report=term-missing
+# Run with coverage
+uv run pytest --cov=dtn_crypto --cov-report=term-missing
 
 # Run specific test modules
-pytest tests/test_rsa_aes.py -v        # RSA-AES encryption tests
-pytest tests/test_cpabe.py -v          # CP-ABE tests
-pytest tests/test_bundle.py -v         # Bundle tests
-pytest tests/test_pcap.py -v           # PCAP/BPv7 tests
-pytest tests/test_api.py -v            # FastAPI endpoint tests
+uv run pytest tests/test_rsa_aes.py -v
+uv run pytest tests/test_cpabe.py -v
+uv run pytest tests/test_bundle.py -v
+uv run pytest tests/test_pcap.py -v
+uv run pytest tests/test_api.py -v
 
 # Lint with ruff
-ruff check dtn_crypto/ simulator/ api/ tests/
+uv run ruff check api/ simulator/ dtn_crypto/
 ```
 
-### Test Coverage Summary (129 tests)
+### Test Coverage (129 tests)
 
 | Module | Tests | Coverage |
 |---|---|---|
-| `dtn_crypto` (Phase 1) | 55 | ~96% (RSA-AES, CP-ABE, bundles) |
-| `dtn_crypto` (Phase 4) | 5 | SHA-256 integrity verification |
-| `simulator/pcap_logger` (Phase 3) | 19 | PCAP + BPv7 encoding |
-| `api/` (Phase 3) | 19 | REST + WebSocket endpoints |
-| `api/` (Phase 4) | 4 | Integrity, timing, custom payload |
+| `dtn_crypto` | 60 | RSA-AES, CP-ABE, bundles, SHA-256 integrity |
+| `simulator/pcap_logger` | 19 | PCAP + BPv7 encoding |
+| `api/` | 23 | REST + WebSocket + payload/integrity |
 | **Total** | **129** | |
 
 ---
@@ -595,74 +491,78 @@ ruff check dtn_crypto/ simulator/ api/ tests/
 
 ```
 dtn-crypto/
-+-- dtn_crypto/              # Phase 1: Cryptography library
-|   +-- __init__.py          # Public API (29 exported symbols)
-|   +-- utils.py             # Key generation, PEM serialization, helpers
++-- dtn_crypto/              # Cryptography library
+|   +-- __init__.py          # Public API
+|   +-- utils.py             # Key generation, PEM serialization
 |   +-- rsa_aes.py           # RSA-OAEP + AES-256-GCM hybrid encryption
 |   +-- cpabe.py             # CP-ABE with PolicyAttributeMatcher
-|   +-- bundle.py            # Dual-layer encrypted DTN bundles + SHA-256 integrity
-+-- simulator/               # Phase 2: DTN network simulator
-|   +-- __init__.py
+|   +-- bundle.py            # Dual-layer encrypted DTN bundles
++-- simulator/               # DTN network simulator
 |   +-- models.py            # Node, SimBundle, ContactEvent, SimEvent
-|   +-- engine.py            # Discrete-event simulation engine + transmission timing
-|   +-- crypto_layer.py      # Crypto integration wrapper + integrity tracking
+|   +-- engine.py            # Discrete-event simulation engine
+|   +-- crypto_layer.py      # Crypto integration + integrity tracking
 |   +-- metrics.py           # Metrics collection + JSON/CSV export
-|   +-- scenarios.py         # 3 preset scenarios + custom config + bandwidth params
-|   +-- pcap_logger.py       # Phase 3: BPv7 PCAP writer for Wireshark
+|   +-- scenarios.py         # 3 preset scenarios + bandwidth params
+|   +-- pcap_logger.py       # BPv7 PCAP writer for Wireshark
 |   +-- routers/
 |       +-- base.py          # Abstract router interface
 |       +-- epidemic.py      # Epidemic routing (flood)
 |       +-- prophet.py       # PRoPHET routing (probabilistic)
 |       +-- spray.py         # Spray-and-Wait (binary mode)
-+-- api/                     # Phase 3: FastAPI backend
-|   +-- __init__.py
-|   +-- app.py               # FastAPI app + serves React frontend from dist
++-- api/                     # FastAPI backend
+|   +-- app.py               # App, CORS, security headers, SPA serving
 |   +-- router.py            # Route definitions (REST + WebSocket)
 |   +-- simulator.py         # Async simulation wrapper
 |   +-- schemas.py           # Pydantic request/response models
 |   +-- scenarios.py         # Scenario info wrapper
-+-- frontend/                # Phase 4: React + TypeScript SPA (Vite)
++-- frontend/                # React + TypeScript SPA (Vite)
 |   +-- src/
-|   |   +-- App.tsx          # Main app component (grid layout)
-|   |   +-- App.css          # Dark theme CSS with responsive breakpoints
-|   |   +-- types/index.ts   # TypeScript interfaces for API models
-|   |   +-- api/client.ts    # REST API client + WebSocket URL helper
+|   |   +-- App.tsx          # Main app (grid layout, graph state)
+|   |   +-- App.css          # Purple/teal theme, responsive breakpoints
+|   |   +-- types/index.ts   # TypeScript interfaces
+|   |   +-- api/client.ts    # REST + WebSocket client
 |   |   +-- hooks/
-|   |   |   +-- useSimulation.ts  # Simulation state, WS/REST, export
+|   |   |   +-- useSimulation.ts  # State, WS/REST, export
 |   |   +-- components/
-|   |       +-- Sidebar.tsx           # Controls: router, sliders, scenarios, payload, bundle list
-|   |       +-- NetworkGraph.tsx      # D3.js force-directed graph with click + path highlighting
-|   |       +-- MetricsPanel.tsx      # Bottom panel container
-|   |       +-- InspectorPanel.tsx    # Phase 5: Inspector dispatcher (bundle/node)
-|   |       +-- BundleInspector.tsx   # Phase 5: Path timeline, timing waterfall, content stages
-|   |       +-- NodeCryptoPanel.tsx   # Phase 5: RSA PEM preview, CP-ABE attributes, stats
-|   |       +-- FileUpload.tsx        # Phase 5: File upload button for .txt payloads
+|   |       +-- Sidebar.tsx           # Controls, scenarios, bundle list
+|   |       +-- NetworkGraph.tsx      # D3.js graph (4 layouts, click, path highlight)
+|   |       +-- MetricsPanel.tsx      # Charts container
+|   |       +-- NodeInspectorModal.tsx # Node detail popup (3 tabs)
+|   |       +-- InspectorPanel.tsx    # Bundle inspector
+|   |       +-- EventLog.tsx          # Event log with type filters
+|   |       +-- NetworkStats.tsx      # Research stats panel
 |   |       +-- charts/
-|   |           +-- DeliveryGauge.tsx  # Delivery ratio percentage display
-|   |           +-- LatencyChart.tsx   # Line chart (latency over time)
+|   |           +-- LatencyChart.tsx   # Line chart with tooltips
 |   |           +-- CryptoChart.tsx    # Bar chart (encrypt/decrypt/transmit)
 |   |           +-- StatusChart.tsx    # Doughnut chart (bundle status)
+|   |           +-- HopDistributionChart.tsx  # Hop count histogram
 |   +-- dist/                # Built output (served by FastAPI)
 |   +-- package.json
 |   +-- vite.config.ts
-|   +-- tsconfig.json
-+-- tests/
-|   +-- __init__.py
-|   +-- test_rsa_aes.py      # RSA-AES encryption tests
-|   +-- test_cpabe.py        # CP-ABE tests
-|   +-- test_bundle.py       # Bundle + SHA-256 integrity tests
-|   +-- test_pcap.py         # PCAP/BPv7 encoding tests
-|   +-- test_api.py          # FastAPI endpoint + payload/integrity tests
-+-- index.html               # Legacy vanilla JS dashboard (replaced by frontend/)
-+-- run_simulation.py        # CLI entry point (--payload-file, --payload-text)
-+-- pyproject.toml            # Package configuration
++-- tests/                   # Test suite (129 tests)
+|   +-- test_rsa_aes.py
+|   +-- test_cpabe.py
+|   +-- test_bundle.py
+|   +-- test_pcap.py
+|   +-- test_api.py
++-- run_simulation.py        # CLI entry point
++-- pyproject.toml           # Hatchling build, UV dependencies
++-- Dockerfile               # Multi-stage production build
++-- docker-compose.yml       # Production + dev services
++-- uv.lock                  # Dependency lockfile
 +-- .gitignore
-+-- .github/
-    +-- workflows/
-        +-- lint.yml          # Ruff linting CI
-        +-- test.yml          # Pytest CI
-        +-- publish.yml       # PyPI publish on release
++-- .dockerignore
 ```
+
+---
+
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated allowed CORS origins |
+| `HOST` | `127.0.0.1` | Server bind address |
+| `PORT` | `8000` | Server port |
 
 ---
 
