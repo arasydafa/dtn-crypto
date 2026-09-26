@@ -1,3 +1,8 @@
+/* Tailwind + OmegaOS tokens. App.css holds legacy DTN styles during migration. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Global reset - minimal, App.css has the rest */
 html,
 body,

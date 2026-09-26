@@ -16,6 +16,8 @@
 
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import "./App.css";
+import { Button } from "@omega-os/ui";
+import { Zap, Circle, Grid2x2, TreePine } from "lucide-react";
 import { useSimulation } from "./hooks/useSimulation";
 import TopNav from "./components/TopNav";
 import Sidebar from "./components/Sidebar";
@@ -212,24 +214,23 @@ export default function App() {
               runId={sim.runId}
               layout={graphLayout}
             />
-            {/* Layout selector */}
-            <div style={{
-              position: "absolute", top: 12, left: 12, zIndex: 30,
-              display: "flex", gap: 4, background: "var(--surface)",
-              border: "1px solid var(--glass-border)", borderRadius: "var(--radius)",
-              padding: 4, boxShadow: "var(--shadow-sm)"
-            }}>
-              {(["force", "circular", "grid", "tree"] as const).map((l) => (
-                <button
-                  key={l}
-                  className={`bundle-filter-chip${graphLayout === l ? " active" : ""}`}
-                  onClick={() => setGraphLayout(l)}
-                  style={{ fontSize: 10, padding: "3px 8px", textTransform: "capitalize" }}
-                  title={`${l} layout`}
-                >
-                  {l === "force" && "⚡"} {l === "circular" && "⭕"} {l === "grid" && "⊞"} {l === "tree" && "🌲"} {l}
-                </button>
-              ))}
+            {/* Layout selector — OmegaOS phase 1, lucide icons only */}
+            <div className="absolute left-3 top-3 z-30 flex gap-1 rounded-ot-md border border-ot-border bg-ot-bg p-1 shadow-ot-sm">
+              {(["force", "circular", "grid", "tree"] as const).map((l) => {
+                const Icon = l === "force" ? Zap : l === "circular" ? Circle : l === "grid" ? Grid2x2 : TreePine;
+                return (
+                  <Button
+                    key={l}
+                    variant={graphLayout === l ? "primary" : "ghost"}
+                    size="sm"
+                    onClick={() => setGraphLayout(l)}
+                    icon={<Icon size={12} aria-hidden />}
+                    title={`${l} layout`}
+                  >
+                    <span className="capitalize">{l}</span>
+                  </Button>
+                );
+              })}
             </div>
             <InspectorPanel
               target={sim.selectedTarget?.type === "bundle" ? sim.selectedTarget : null}
