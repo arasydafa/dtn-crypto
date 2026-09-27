@@ -7,7 +7,7 @@
  * OmegaOS equivalent yet — candidate for a future OmegaOS component).
  */
 
-import { Badge, Accordion, Timeline, CodeBlock } from "@omega-os/ui";
+import { Badge, Accordion, Timeline, CodeBlock, TimingBar } from "@omega-os/ui";
 import type { BundleDetail } from "../types";
 
 /** Props for the BundleInspector component. */
@@ -24,56 +24,12 @@ function StatusBadge({ bundle }: { bundle: BundleDetail }) {
 }
 
 /**
- * Horizontal stacked bar showing encrypt/transmit/decrypt time breakdown.
- * Custom — no OmegaOS equivalent for a 3-segment timing bar yet.
- */
-function TimingWaterfall({ bundle }: { bundle: BundleDetail }) {
-  const enc = bundle.encrypt_time_ms;
-  const tx = bundle.transmission_time_ms;
-  const dec = bundle.decrypt_time_ms ?? 0;
-  const total = enc + tx + dec;
-  if (total === 0) return <p className="text-xs text-ot-muted">No timing data</p>;
-
-  const pEnc = (enc / total) * 100;
-  const pTx = (tx / total) * 100;
-  const pDec = (dec / total) * 100;
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex h-5 flex-1 overflow-hidden rounded-ot-sm bg-ot-surface-2">
-        {pEnc > 0 && (
-          <div className="flex h-full items-center justify-center text-[10px] font-semibold text-white bg-navy" style={{ width: `${pEnc}%` }}>
-            {enc >= 0.1 ? `${enc.toFixed(1)}ms` : ""}
-          </div>
-        )}
-        {pTx > 0 && (
-          <div className="flex h-full items-center justify-center text-[10px] font-semibold text-white bg-warning" style={{ width: `${pTx}%` }}>
-            {tx >= 0.1 ? `${tx.toFixed(1)}ms` : ""}
-          </div>
-        )}
-        {pDec > 0 && (
-          <div className="flex h-full items-center justify-center text-[10px] font-semibold text-white bg-success" style={{ width: `${pDec}%` }}>
-            {dec >= 0.1 ? `${dec.toFixed(1)}ms` : ""}
-          </div>
-        )}
-      </div>
-      <div className="flex gap-3 text-[11px] text-ot-muted">
-        <span className="font-medium text-navy-text">Encrypt</span>
-        <span className="font-medium text-warning">Transmit</span>
-        <span className="font-medium text-success">Decrypt</span>
-      </div>
-      <div className="text-right text-[11px] text-ot-muted">Total: {total.toFixed(2)} ms</div>
-    </div>
-  );
-}
-
-/**
  * Bundle inspector component.
  *
  * Sections:
  * 1. **Header** — Status badge, source→destination, creation time, hop count, payload size
  * 2. **Bundle Path** — Hop-by-hop timeline with transfer times
- * 3. **Timing Breakdown** — Encrypt/transmit/decrypt waterfall chart
+ * 3. **Timing Breakdown** — Encrypt/transmit/decrypt TimingBar
  * 4. **Content Stages** — Plaintext (source), Encrypted (transit), Decrypted (destination)
  */
 export default function BundleInspector({ bundle }: Props) {
@@ -114,10 +70,17 @@ export default function BundleInspector({ bundle }: Props) {
         )}
       </div>
 
-      {/* Timing Waterfall */}
+      {/* Timing Breakdown */}
       <div className="flex flex-col gap-2">
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ot-muted">Timing Breakdown</h3>
-        <TimingWaterfall bundle={bundle} />
+        <TimingBar
+          unit="ms"
+          segments={[
+            { id: "encrypt", label: "Encrypt", value: bundle.encrypt_time_ms, tone: "navy" },
+            { id: "transmit", label: "Transmit", value: bundle.transmission_time_ms, tone: "warning" },
+            { id: "decrypt", label: "Decrypt", value: bundle.decrypt_time_ms ?? 0, tone: "success" },
+          ]}
+        />
       </div>
 
       {/* Content Stages */}
