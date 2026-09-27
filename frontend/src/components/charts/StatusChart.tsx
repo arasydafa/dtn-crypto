@@ -128,8 +128,8 @@ export default function StatusChart({ metrics, events }: Props) {
     return (
         <Card>
             <h3 className="mb-1.5 text-[10px] uppercase tracking-wider text-ot-muted">Bundle Status</h3>
-            <div className="chart-container">
-                <canvas ref={canvasRef} />
+            <div className="relative min-h-0 flex-1">
+                <canvas ref={canvasRef} className="!h-full !w-full" />
             </div>
         </Card>
     );

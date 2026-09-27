@@ -1,21 +1,15 @@
 /**
  * @module components/FileUpload
- * @description File upload widget for custom .txt payloads.
+ * @description Custom .txt payload upload — OmegaOS phase 4.
  *
- * Provides a hidden file input triggered by a styled button. Validates
- * that the file is `.txt` and under 1MB. Reads the file as text and
- * passes the content to the parent via callback.
- *
- * @example
- * ```tsx
- * <FileUpload
- *   onFileContent={(text) => setConfig({ payload_text: text })}
- *   currentPayload={config.payload_text}
- * />
- * ```
+ * Wraps @omega-os/ui FileUpload (drag-drop, type/size validation) and reads
+ * the accepted file as text for the simulation payload. Clearing resets both
+ * the OmegaOS item list and the DTN payload.
  */
 
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { FileUpload as OmegaFileUpload, Button } from "@omega-os/ui";
+import { X } from "lucide-react";
 
 /** Props for the FileUpload component. */
 interface Props {
@@ -29,72 +23,46 @@ interface Props {
 /** Maximum file size in bytes (1MB). */
 const MAX_SIZE = 1_048_576;
 
-/**
- * File upload widget for `.txt` payloads.
- *
- * Features:
- * - Hidden `<input type="file">` triggered by a button click
- * - File validation: `.txt` extension only, 1MB max size
- * - Reads file as text via `FileReader.readAsText()`
- * - Shows file name and clear button after upload
- * - Resets input so re-selecting the same file triggers change
- */
 export default function FileUpload({ onFileContent, currentPayload }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [resetKey, setResetKey] = useState(0);
 
-  /**
-   * Handle file selection. Validates size, reads as text, and calls callback.
-   */
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFiles = (files: File[]) => {
+    const file = files[0];
     if (!file) return;
-
-    if (file.size > MAX_SIZE) {
-      alert("File too large. Maximum size is 1 MB.");
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = () => {
-      const text = reader.result as string;
       setFileName(file.name);
-      onFileContent(text);
+      onFileContent(reader.result as string);
     };
     reader.readAsText(file);
-
-    // Reset so re-selecting same file triggers change
-    e.target.value = "";
   };
 
   /** Clear the uploaded file and reset the payload. */
   const handleClear = () => {
     setFileName(null);
+    setResetKey((k) => k + 1);
     onFileContent("");
   };
 
   return (
-    <div className="file-upload">
-      <input
-        ref={inputRef}
-        type="file"
+    <div className="flex flex-col gap-1.5">
+      <OmegaFileUpload
+        key={resetKey}
         accept=".txt"
-        onChange={handleChange}
-        style={{ display: "none" }}
+        multiple={false}
+        maxSize={MAX_SIZE}
+        maxFiles={1}
+        label="Payload file"
+        helper=".txt up to 1 MB"
+        onFiles={handleFiles}
       />
-      <button
-        type="button"
-        className="file-upload-btn"
-        onClick={() => inputRef.current?.click()}
-      >
-        Upload .txt file
-      </button>
       {fileName && currentPayload && (
-        <div className="file-upload-info">
-          <span className="file-name">{fileName}</span>
-          <button type="button" className="file-clear" onClick={handleClear}>
+        <div className="flex items-center justify-between text-[11px] text-ot-muted">
+          <span className="truncate font-medium text-navy-text">{fileName}</span>
+          <Button variant="ghost" size="sm" onClick={handleClear} icon={<X size={12} aria-hidden />}>
             Clear
-          </button>
+          </Button>
         </div>
       )}
     </div>

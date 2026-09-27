@@ -94,9 +94,9 @@ export default function MetricsPanel({ metrics, events, open, appLogs, onClearAp
                 />
             </div>
 
-            <div className="bottom-content">
+            <div className="min-h-0 flex-1 overflow-y-auto">
                 {tab === "charts" && (
-                    <div className="bottom-charts" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+                    <div className="grid grid-cols-1 gap-3.5 p-3 md:grid-cols-2 xl:grid-cols-3}">
                         <DeliveryGauge metrics={metrics} delivered={delivered} total={total} />
                         <LatencyChart events={events} />
                         <CryptoChart metrics={metrics} />
