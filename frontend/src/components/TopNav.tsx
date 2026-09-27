@@ -9,6 +9,7 @@
 import { Button } from "@omega-os/ui";
 import { Badge } from "@omega-os/ui";
 import { Tooltip } from "@omega-os/ui";
+import { toggleThemeReveal } from "@omega-os/ui";
 import {
   Menu,
   Sun,
@@ -138,7 +139,7 @@ export default function TopNav({
           <Button
             variant="ghost"
             size="sm"
-            onClick={onToggleTheme}
+            onClick={(e) => toggleThemeReveal(e.clientX, e.clientY, onToggleTheme)}
             icon={theme === "dark" ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}
             aria-label="Toggle theme"
           />
