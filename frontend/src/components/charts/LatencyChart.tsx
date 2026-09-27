@@ -10,6 +10,7 @@ import {
   Tooltip,
 } from "chart.js";
 import type { SimulationEvent } from "../../types";
+import { Card } from "@omega-os/ui";
 
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip);
 
@@ -109,11 +110,11 @@ export default function LatencyChart({ events }: Props) {
   }, [events]);
 
   return (
-    <div className="chart-card">
-      <h3>Latency Over Time</h3>
+    <Card>
+      <h3 className="mb-1.5 text-[10px] uppercase tracking-wider text-ot-muted">Latency Over Time</h3>
       <div className="chart-container">
         <canvas ref={canvasRef} />
       </div>
-    </div>
+    </Card>
   );
 }
