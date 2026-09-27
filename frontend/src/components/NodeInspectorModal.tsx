@@ -28,6 +28,7 @@ export default function NodeInspectorModal({ node, nodeBundles, onSelectBundle, 
       open
       onClose={onClose}
       title={node.node_id}
+      size="lg"
       icon={<Server size={16} aria-hidden className="text-ot-muted" />}
     >
       <div className="flex max-h-[70vh] flex-col gap-3">

@@ -81,6 +81,7 @@ export default function WikiModal({ onClose }: Props) {
             open
             onClose={onClose}
             title="DTN Crypto Wiki"
+            size="lg"
             icon={<BookOpen size={16} aria-hidden className="text-ot-muted" />}
         >
             <div className="max-h-[70vh] overflow-y-auto pr-1">
