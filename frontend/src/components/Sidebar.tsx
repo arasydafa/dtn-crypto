@@ -1,24 +1,14 @@
 /**
  * @module components/Sidebar
- * @description Left sidebar with simulation configuration, scenario selection, presets,
- * bundle list, and export controls.
+ * @description Left sidebar — OmegaOS phase 1.
  *
- * When collapsed, shows icon-only buttons. When expanded, displays full
- * configuration controls (router, nodes, duration, message rate, priority),
- * animation speed, custom payload input, scenario buttons, preset save/load,
- * bundle filter chips, and a scrollable bundle list.
- *
- * @example
- * ```tsx
- * <Sidebar
- *   collapsed={sim.sidebarCollapsed}
- *   config={sim.config}
- *   onConfigChange={sim.updateConfig}
- *   ...
- * />
- * ```
+ * Configuration controls use @omega-os/ui (Select, Slider, Textarea,
+ * Input, Button, Badge). Bundle list and layout container stay custom
+ * until phase 2-3.
  */
 
+import { Select, Slider, Textarea, Input, Button, Badge } from "@omega-os/ui";
+import { Settings, FileText, Layers, Package, Save, Download } from "lucide-react";
 import type { SimulationConfig, BundleDetail, InspectorTarget } from "../types";
 import FileUpload from "./FileUpload";
 import { useState } from "react";
@@ -76,7 +66,6 @@ interface Props {
 
 /**
  * Preset scenario definitions.
- * Each scenario configures contact patterns and bandwidth for a specific use case.
  */
 const scenarios = [
     {
@@ -96,59 +85,6 @@ const scenarios = [
     },
 ];
 
-/** Gear icon SVG for the Configuration section. */
-const iconConfig = (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-        <circle cx="12" cy="12" r="3" />
-    </svg>
-);
-
-/** Document icon SVG for the Custom Payload section. */
-const iconPayload = (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <line x1="16" y1="13" x2="8" y2="13" />
-        <line x1="16" y1="17" x2="8" y2="17" />
-        <polyline points="10 9 9 9 8 9" />
-    </svg>
-);
-
-/** Layers icon SVG for the Scenarios section. */
-const iconScenario = (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="12 2 2 7 12 12 22 7 12 2" />
-        <polyline points="2 17 12 22 22 17" />
-        <polyline points="2 12 12 17 22 12" />
-    </svg>
-);
-
-/** Box icon SVG for the Bundles section. */
-const iconBundles = (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-        <line x1="12" y1="22.08" x2="12" y2="12" />
-    </svg>
-);
-
-/** Lightning bolt icon SVG for the Animation section. */
-const iconSpeed = (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-    </svg>
-);
-
-/** Save icon SVG for the Presets section. */
-const iconPreset = (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-        <polyline points="17 21 17 13 7 13 7 21" />
-        <polyline points="7 3 7 8 15 8" />
-    </svg>
-);
-
 /** Bundle list filter options. */
 const filterOptions = [
     { key: "all", label: "All" },
@@ -158,20 +94,17 @@ const filterOptions = [
     { key: "intransit", label: "In Transit" },
 ];
 
+function SectionTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-ot-muted">
+      <span className="text-ot-muted">{icon}</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
 /**
- * Left sidebar component.
- *
- * **Collapsed mode**: Shows icon-only buttons that expand the sidebar on click.
- *
- * **Expanded mode**: Full configuration panel with sections:
- * - Configuration (router, nodes, duration, message rate)
- * - Animation (speed slider)
- * - Custom Payload (text area + file upload)
- * - Scenarios (disaster, deep space, military)
- * - Presets (save/load from localStorage)
- * - Bundles (filter chips + scrollable list)
- * - Export CSV button
- * - Credit line
+ * Left sidebar component (OmegaOS controls).
  */
 export default function Sidebar({
     collapsed,
@@ -195,20 +128,12 @@ export default function Sidebar({
 
     if (collapsed) {
         return (
-            <div className="sidebar sidebar-collapsed">
-                <button className="sidebar-section-icon" title="Expand sidebar" onClick={onToggleSidebar}>
-                    {iconConfig}
-                </button>
-                <button className="sidebar-section-icon" title="Configuration" onClick={onToggleSidebar}>
-                    {iconPayload}
-                </button>
-                <button className="sidebar-section-icon" title="Scenarios" onClick={onToggleSidebar}>
-                    {iconScenario}
-                </button>
+            <div className="flex w-16 flex-shrink-0 flex-col items-center gap-2 border-r border-ot-border bg-ot-bg py-5">
+                <Button variant="ghost" size="sm" onClick={onToggleSidebar} icon={<Settings size={16} aria-hidden />} aria-label="Expand sidebar" />
+                <Button variant="ghost" size="sm" onClick={onToggleSidebar} icon={<FileText size={16} aria-hidden />} aria-label="Configuration" />
+                <Button variant="ghost" size="sm" onClick={onToggleSidebar} icon={<Layers size={16} aria-hidden />} aria-label="Scenarios" />
                 {bundleDetails.length > 0 && (
-                    <button className="sidebar-section-icon" title={`Bundles (${bundleDetails.length})`} onClick={onToggleSidebar}>
-                        {iconBundles}
-                    </button>
+                    <Button variant="ghost" size="sm" onClick={onToggleSidebar} icon={<Package size={16} aria-hidden />} aria-label={`Bundles (${bundleDetails.length})`} />
                 )}
             </div>
         );
@@ -224,114 +149,80 @@ export default function Sidebar({
     };
 
     return (
-        <div className="sidebar">
-            <div className="sidebar-section">
-                <div className="sidebar-section-title">
-                    {iconConfig}
-                    <span>Configuration</span>
-                </div>
+        <div className="flex w-[280px] flex-shrink-0 flex-col gap-5 overflow-y-auto border-r border-ot-border bg-ot-bg p-5">
+            <div className="flex flex-col gap-2.5">
+                <SectionTitle icon={<Settings size={16} aria-hidden />}>Configuration</SectionTitle>
 
-                <div className="control-group">
-                    <label>Routing Algorithm</label>
-                    <select
-                        value={config.router}
-                        onChange={(e) =>
-                            onConfigChange({
-                                router: e.target.value as SimulationConfig["router"],
-                            })
-                        }
-                    >
-                        <option value="epidemic">Epidemic (Flood)</option>
-                        <option value="prophet">PRoPHET (Probabilistic)</option>
-                        <option value="spray">Spray-and-Wait (Binary)</option>
-                    </select>
-                </div>
+                <Select
+                    label="Routing Algorithm"
+                    value={config.router}
+                    onChange={(e) =>
+                        onConfigChange({
+                            router: e.target.value as SimulationConfig["router"],
+                        })
+                    }
+                >
+                    <option value="epidemic">Epidemic (Flood)</option>
+                    <option value="prophet">PRoPHET (Probabilistic)</option>
+                    <option value="spray">Spray-and-Wait (Binary)</option>
+                </Select>
 
-                <div className="control-group">
-                    <label>
-                        Node Count <span className="val">{config.nodes}</span>
-                    </label>
-                    <input
-                        type="range"
-                        min={5}
-                        max={50}
-                        value={config.nodes}
-                        onChange={(e) => onConfigChange({ nodes: Number(e.target.value) })}
-                    />
-                </div>
+                <Slider
+                    label={`Node Count (${config.nodes})`}
+                    showValue={false}
+                    min={5}
+                    max={50}
+                    value={config.nodes}
+                    onChange={(v) => onConfigChange({ nodes: v })}
+                />
 
-                <div className="control-group">
-                    <label>
-                        Duration (sec) <span className="val">{config.duration}</span>
-                    </label>
-                    <input
-                        type="range"
-                        min={60}
-                        max={7200}
-                        step={60}
-                        value={config.duration}
-                        onChange={(e) => onConfigChange({ duration: Number(e.target.value) })}
-                    />
-                </div>
+                <Slider
+                    label={`Duration (sec) (${config.duration})`}
+                    showValue={false}
+                    min={60}
+                    max={7200}
+                    step={60}
+                    value={config.duration}
+                    onChange={(v) => onConfigChange({ duration: v })}
+                />
 
-                <div className="control-group">
-                    <label>
-                        Message Rate (msg/min){" "}
-                        <span className="val">{config.message_rate.toFixed(1)}</span>
-                    </label>
-                    <input
-                        type="range"
-                        min={0.1}
-                        max={10}
-                        step={0.1}
-                        value={config.message_rate}
-                        onChange={(e) =>
-                            onConfigChange({ message_rate: Number(e.target.value) })
-                        }
-                    />
-                </div>
+                <Slider
+                    label={`Message Rate (msg/min) (${config.message_rate.toFixed(1)})`}
+                    showValue={false}
+                    min={0.1}
+                    max={10}
+                    step={0.1}
+                    value={config.message_rate}
+                    onChange={(v) => onConfigChange({ message_rate: v })}
+                />
             </div>
 
-            {/* Animation Speed */}
-            <div className="sidebar-section">
-                <div className="sidebar-section-title">
-                    {iconSpeed}
-                    <span>Animation</span>
-                </div>
-                <div className="control-group">
-                    <label>
-                        Speed <span className="val">{animationSpeed.toFixed(1)}x</span>
-                    </label>
-                    <input
-                        type="range"
-                        min={0.5}
-                        max={3}
-                        step={0.1}
-                        value={animationSpeed}
-                        onChange={(e) => onAnimationSpeedChange(Number(e.target.value))}
-                    />
-                </div>
+            <div className="flex flex-col gap-2.5">
+                <SectionTitle icon={<Settings size={16} aria-hidden />}>Animation</SectionTitle>
+                <Slider
+                    label={`Speed (${animationSpeed.toFixed(1)}x)`}
+                    showValue={false}
+                    min={0.5}
+                    max={3}
+                    step={0.1}
+                    value={animationSpeed}
+                    onChange={(v) => onAnimationSpeedChange(v)}
+                />
             </div>
 
-            <div className="sidebar-section">
-                <div className="sidebar-section-title">
-                    {iconPayload}
-                    <span>Custom Payload</span>
-                </div>
-                <div className="control-group">
-                    <label>Payload Text</label>
-                    <textarea
-                        className="payload-input"
-                        placeholder="Enter custom payload text (max 1MB)..."
-                        rows={3}
-                        value={config.payload_text ?? ""}
-                        onChange={(e) =>
-                            onConfigChange({
-                                payload_text: e.target.value || null,
-                            })
-                        }
-                    />
-                </div>
+            <div className="flex flex-col gap-2.5">
+                <SectionTitle icon={<FileText size={16} aria-hidden />}>Custom Payload</SectionTitle>
+                <Textarea
+                    label="Payload Text"
+                    placeholder="Enter custom payload text (max 1MB)..."
+                    rows={3}
+                    value={config.payload_text ?? ""}
+                    onChange={(e) =>
+                        onConfigChange({
+                            payload_text: e.target.value || null,
+                        })
+                    }
+                />
                 <FileUpload
                     onFileContent={(content) =>
                         onConfigChange({ payload_text: content || null })
@@ -340,37 +231,28 @@ export default function Sidebar({
                 />
             </div>
 
-            <div className="sidebar-section">
-                <div className="sidebar-section-title">
-                    {iconScenario}
-                    <span>Scenarios</span>
-                </div>
-                <div className="scenarios">
+            <div className="flex flex-col gap-2.5">
+                <SectionTitle icon={<Layers size={16} aria-hidden />}>Scenarios</SectionTitle>
+                <div className="flex flex-col gap-1.5">
                     {scenarios.map((s) => (
-                        <button
+                        <Button
                             key={s.key}
-                            className={
-                                "scenario-btn" + (config.scenario === s.key ? " active" : "")
-                            }
+                            variant={config.scenario === s.key ? "primary" : "secondary"}
+                            size="sm"
                             onClick={() => onConfigChange({ scenario: s.key })}
                             title={s.desc}
+                            className="justify-start"
                         >
-                            <div className="name">{s.name}</div>
-                        </button>
+                            {s.name}
+                        </Button>
                     ))}
                 </div>
             </div>
 
-            {/* Presets */}
-            <div className="sidebar-section">
-                <div className="sidebar-section-title">
-                    {iconPreset}
-                    <span>Presets</span>
-                </div>
-                <div className="preset-save-row">
-                    <input
-                        type="text"
-                        className="preset-input"
+            <div className="flex flex-col gap-2.5">
+                <SectionTitle icon={<Save size={16} aria-hidden />}>Presets</SectionTitle>
+                <div className="flex gap-1.5">
+                    <Input
                         placeholder="Preset name..."
                         value={presetName}
                         onChange={(e) => setPresetName(e.target.value)}
@@ -380,9 +262,11 @@ export default function Sidebar({
                                 setPresetName("");
                             }
                         }}
+                        className="flex-1"
                     />
-                    <button
-                        className="preset-save-btn"
+                    <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => {
                             if (presetName.trim()) {
                                 onSavePreset(presetName.trim());
@@ -392,19 +276,19 @@ export default function Sidebar({
                         disabled={!presetName.trim()}
                     >
                         Save
-                    </button>
+                    </Button>
                 </div>
                 {presets.length > 0 && (
-                    <div className="preset-list">
+                    <div className="flex max-h-[120px] flex-col gap-1 overflow-y-auto">
                         {presets.map((p, i) => (
                             <button
                                 key={i}
-                                className="preset-item"
+                                className="flex items-center justify-between rounded-ot-sm border border-ot-border bg-ot-surface px-2.5 py-1.5 text-left transition-colors hover:border-navy"
                                 onClick={() => onLoadPreset(p)}
                                 title={`Load ${p.name}`}
                             >
-                                <span className="preset-item-name">{p.name}</span>
-                                <span className="preset-item-date">
+                                <span className="text-xs font-semibold text-ot-text">{p.name}</span>
+                                <span className="text-[10px] text-ot-muted">
                                     {new Date(p.savedAt).toLocaleDateString()}
                                 </span>
                             </button>
@@ -413,39 +297,37 @@ export default function Sidebar({
                 )}
             </div>
 
-            {/* Bundle Filter & List */}
             {bundleDetails.length > 0 && (
-                <div className="sidebar-section">
-                    <div className="sidebar-section-title">
-                        {iconBundles}
-                        <span>Bundles</span>
-                    </div>
-                    <div className="bundle-filter-chips">
+                <div className="flex flex-col gap-2.5">
+                    <SectionTitle icon={<Package size={16} aria-hidden />}>Bundles</SectionTitle>
+                    <div className="flex flex-wrap gap-1.5">
                         {filterOptions.map((f) => (
-                            <button
+                            <Button
                                 key={f.key}
-                                className={`bundle-filter-chip${bundleFilter === f.key ? " active" : ""}`}
+                                variant={bundleFilter === f.key ? "primary" : "secondary"}
+                                size="sm"
                                 onClick={() => onBundleFilterChange(f.key)}
                             >
                                 {f.label}
-                                <span className="chip-count">{bundleCounts[f.key as keyof typeof bundleCounts]}</span>
-                            </button>
+                                <Badge tone={bundleFilter === f.key ? "navy" : "grey"}>
+                                    {bundleCounts[f.key as keyof typeof bundleCounts]}
+                                </Badge>
+                            </Button>
                         ))}
                     </div>
-                    <div className="bundle-list">
+                    <div className="flex max-h-[200px] flex-col gap-1 overflow-y-auto">
                         {bundleDetails.slice(0, 50).map((b) => (
                             <button
                                 key={b.bundle_id}
-                                className={
-                                    "bundle-list-item" +
-                                    (selectedTarget?.type === "bundle" && selectedTarget.id === b.bundle_id
-                                        ? " selected"
-                                        : "")
-                                }
+                                className={`flex items-center justify-between rounded-ot-sm border px-2.5 py-1.5 text-xs transition-colors ${
+                                    selectedTarget?.type === "bundle" && selectedTarget.id === b.bundle_id
+                                        ? "border-navy bg-navy-bg"
+                                        : "border-ot-border bg-ot-surface hover:border-navy"
+                                }`}
                                 onClick={() => onSelectBundle(b.bundle_id)}
                             >
-                                <span className="bundle-id">{b.bundle_id}</span>
-                                <span className="bundle-route">
+                                <span className="font-mono font-medium text-ot-text">{b.bundle_id}</span>
+                                <span className="text-[11px] text-ot-muted">
                                     {b.source} &rarr; {b.destination}
                                 </span>
                             </button>
@@ -454,26 +336,22 @@ export default function Sidebar({
                 </div>
             )}
 
-            {/* Export CSV */}
-            <div className="sidebar-section">
-                <button
-                    className="export-csv-btn"
+            <div className="flex flex-col gap-2.5">
+                <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={onExportCsv}
                     disabled={!hasEvents}
+                    icon={<Download size={14} aria-hidden />}
                     title={hasEvents ? "Export events as CSV" : "Run simulation to generate events"}
                 >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
                     Export Events CSV
-                </button>
+                </Button>
             </div>
 
-            <div className="credit-section">
-                <p className="credit-text">
-                    Made by <span className="credit-name">Arasy Dafa Sulistya Kurniawan</span>
+            <div className="mt-auto border-t border-ot-border pt-4 text-center">
+                <p className="text-[10px] leading-relaxed text-ot-muted">
+                    Made by <span className="font-semibold text-navy">Arasy Dafa Sulistya Kurniawan</span>
                 </p>
             </div>
 

@@ -25,6 +25,7 @@
 
 import { useRef, useEffect, useCallback } from "react";
 import * as d3 from "d3";
+import "./NetworkGraph.css";
 import type { SimulationEvent } from "../types";
 
 /**
@@ -173,7 +174,7 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
                 return s + "-" + t;
             });
         linkSel.exit().remove();
-        linkSel.enter().append("line").attr("class", "link link-base active");
+        linkSel.enter().append("line").attr("class", "dtn-link link-base dtn-link-active");
 
         // Nodes
         const nodes = nodesRef.current;
@@ -198,20 +199,20 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
                     (t: ActiveTransfer) => t.from === d.id || t.to === d.id,
                 );
 
-                let html = `<div class="tt-title">${d.id}</div>`;
-                html += `<div class="tt-row"><span>Status</span><span class="tt-val">${st}</span></div>`;
-                html += `<div class="tt-row"><span>Buffer</span><span class="tt-val">${buf}</span></div>`;
-                html += `<div class="tt-row"><span>Delivered</span><span class="tt-val">${del}</span></div>`;
+                let html = `<div class="text-[13px] font-bold text-navy-text mb-1.5">${d.id}</div>`;
+                html += `<div class="flex justify-between gap-3 text-ot-muted py-0.5 text-xs"><span>Status</span><span class="font-semibold text-ot-text">${st}</span></div>`;
+                html += `<div class="flex justify-between gap-3 text-ot-muted py-0.5 text-xs"><span>Buffer</span><span class="font-semibold text-ot-text">${buf}</span></div>`;
+                html += `<div class="flex justify-between gap-3 text-ot-muted py-0.5 text-xs"><span>Delivered</span><span class="font-semibold text-ot-text">${del}</span></div>`;
 
                 if (nodeTransfers.length > 0) {
-                    html += `<div class="tt-divider"></div>`;
-                    html += `<div class="tt-row"><span style="color: var(--warn); font-weight: 600;">Transfers (${nodeTransfers.length})</span></div>`;
+                    html += `<div class="h-px bg-ot-border my-1.5"></div>`;
+                    html += `<div class="flex justify-between gap-3 py-0.5 text-xs"><span class="font-semibold text-warning">Transfers (${nodeTransfers.length})</span></div>`;
                     for (const transfer of nodeTransfers.slice(0, 3)) {
-                        html += `<div class="tt-row" style="font-size: 11px;">`;
+                        html += `<div class="flex justify-between gap-3 py-0.5 text-[11px] text-ot-muted">`;
                         html += `<span>${transfer.from} → ${transfer.to}</span>`;
                         html += `</div>`;
                         if (transfer.payloadPreview) {
-                            html += `<div class="tt-payload">${transfer.payloadPreview.length > 50 ? transfer.payloadPreview.slice(0, 50) + '...' : transfer.payloadPreview}</div>`;
+                            html += `<div class="mt-1 max-h-[60px] overflow-hidden rounded-ot-sm bg-navy-bg px-2 py-1.5 font-mono text-[11px] leading-snug text-navy-text" style="word-break: break-all;">${transfer.payloadPreview.length > 50 ? transfer.payloadPreview.slice(0, 50) + '...' : transfer.payloadPreview}</div>`;
                         }
                     }
                 }
@@ -256,9 +257,9 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
 
         enter.merge(nodeSel).attr("fill", (d) => {
             const st = nodeStates[d.id] || "idle";
-            if (st === "delivering") return "var(--delivered)";
-            if (st === "active") return "var(--active)";
-            return "var(--idle)";
+            if (st === "delivering") return "var(--ot-success)";
+            if (st === "active") return "var(--ot-navy)";
+            return "var(--ot-muted)";
         });
 
         // Labels
@@ -269,7 +270,7 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
         labelSel
             .enter()
             .append("text")
-            .attr("class", "node-label")
+            .attr("class", "dtn-graph-label")
             .attr("dy", 26)
             .merge(labelSel)
             .text((d) => d.id);
@@ -315,9 +316,9 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
         // Flatten roles into array of {nodeId, role, r, ringClass}
         const ringData: Array<{ nodeId: string; role: NodeRole; r: number; ringClass: string }> = [];
         const roleConfig: Record<NodeRole, { r: number; ringClass: string }> = {
-            source: { r: 17, ringClass: "source-ring" },
-            relay: { r: 15, ringClass: "relay-ring" },
-            destination: { r: 13, ringClass: "destination-ring" },
+            source: { r: 17, ringClass: "dtn-source-ring" },
+            relay: { r: 15, ringClass: "dtn-relay-ring" },
+            destination: { r: 13, ringClass: "dtn-destination-ring" },
         };
 
         for (const [nodeId, roleSet] of Object.entries(nodeRolesRef.current)) {
@@ -327,11 +328,11 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
         }
 
         const ringSel = roleRingsGroup
-            .selectAll<any, typeof ringData[number]>("circle.role-ring")
+            .selectAll<any, typeof ringData[number]>("circle.dtn-role-ring")
             .data(ringData, (d: typeof ringData[number]) => `${d.nodeId}-${d.role}`);
         ringSel.exit().remove();
         ringSel.enter().append("circle")
-            .attr("class", (d) => `role-ring ${d.ringClass}`)
+            .attr("class", (d) => `dtn-role-ring ${d.ringClass}`)
             .attr("r", (d) => d.r)
             .attr("fill", "none")
             .attr("stroke-width", 1.5)
@@ -370,16 +371,16 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
         const linkGrad = defs.append("linearGradient")
             .attr("id", "linkGradient")
             .attr("gradientUnits", "userSpaceOnUse");
-        linkGrad.append("stop").attr("offset", "0%").attr("stop-color", "var(--accent)");
-        linkGrad.append("stop").attr("offset", "100%").attr("stop-color", "var(--accent2)");
+        linkGrad.append("stop").attr("offset", "0%").attr("stop-color", "var(--ot-navy)");
+        linkGrad.append("stop").attr("offset", "100%").attr("stop-color", "var(--ot-info)");
 
         // Path highlight gradient
         const pathGrad = defs.append("linearGradient")
             .attr("id", "pathGradient")
             .attr("gradientUnits", "userSpaceOnUse");
-        pathGrad.append("stop").attr("offset", "0%").attr("stop-color", "var(--accent)");
-        pathGrad.append("stop").attr("offset", "50%").attr("stop-color", "var(--warn)");
-        pathGrad.append("stop").attr("offset", "100%").attr("stop-color", "var(--accent2)");
+        pathGrad.append("stop").attr("offset", "0%").attr("stop-color", "var(--ot-navy)");
+        pathGrad.append("stop").attr("offset", "50%").attr("stop-color", "var(--ot-warning)");
+        pathGrad.append("stop").attr("offset", "100%").attr("stop-color", "var(--ot-success)");
 
         const zoomGroup = svg.append("g").attr("class", "zoom-group");
         const linkGroup = zoomGroup.append("g").attr("class", "links");
@@ -450,7 +451,7 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
 
                 // Update persistent transfer lines
                 linkGroup
-                    .selectAll<any, PersistentTransfer>("line.transfer-line")
+                    .selectAll<any, PersistentTransfer>("line.dtn-link-transfer")
                     .attr("x1", (d: any) => {
                         const node = nodesRef.current.find(n => n.id === d.from);
                         return node?.x ?? 0;
@@ -482,7 +483,7 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
                 const roleRingsGroup = svgRef.current ? d3.select(svgRef.current).select<SVGGElement>("g.role-rings") : null;
                 if (roleRingsGroup) {
                     roleRingsGroup
-                        .selectAll<SVGCircleElement, { nodeId: string; role: NodeRole; r: number; ringClass: string }>("circle.role-ring")
+                        .selectAll<SVGCircleElement, { nodeId: string; role: NodeRole; r: number; ringClass: string }>("circle.dtn-role-ring")
                         .attr("cx", (d) => {
                             const node = nodesRef.current.find(n => n.id === d.nodeId);
                             return node?.x ?? 0;
@@ -603,7 +604,7 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
                 .attr("y2", (d: any) => ((d.target as GraphNode).y ?? 0));
 
             linkGroup
-                .selectAll<any, PersistentTransfer>("line.transfer-line")
+                .selectAll<any, PersistentTransfer>("line.dtn-link-transfer")
                 .attr("x1", (d: any) => nodesRef.current.find(n => n.id === d.from)?.x ?? 0)
                 .attr("y1", (d: any) => nodesRef.current.find(n => n.id === d.from)?.y ?? 0)
                 .attr("x2", (d: any) => nodesRef.current.find(n => n.id === d.to)?.x ?? 0)
@@ -621,7 +622,7 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
 
             const roleRingsGroup = svg.select<SVGGElement>("g.role-rings");
             roleRingsGroup
-                .selectAll<SVGCircleElement, { nodeId: string; role: NodeRole; r: number; ringClass: string }>("circle.role-ring")
+                .selectAll<SVGCircleElement, { nodeId: string; role: NodeRole; r: number; ringClass: string }>("circle.dtn-role-ring")
                 .attr("cx", (d) => nodesRef.current.find(n => n.id === d.nodeId)?.x ?? 0)
                 .attr("cy", (d) => nodesRef.current.find(n => n.id === d.nodeId)?.y ?? 0);
 
@@ -706,11 +707,11 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
                     const svg = d3.select(svgRef.current);
                     const linkGroup = svg.select<SVGGElement>("g.links");
                     const transferSel = linkGroup
-                        .selectAll<any, PersistentTransfer>("line.transfer-line")
+                        .selectAll<any, PersistentTransfer>("line.dtn-link-transfer")
                         .data(persistentTransfersRef.current, (d: any) => d.key);
                     transferSel.exit().remove();
                     transferSel.enter().append("line")
-                        .attr("class", "link transfer-line")
+                        .attr("class", "dtn-link dtn-link-transfer")
                         .attr("x1", src.x)
                         .attr("y1", src.y)
                         .attr("x2", dst.x)
@@ -728,7 +729,7 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
 
                     // Animated dot
                     const dotId = evt.bundle_id + "-" + Math.random().toString(36).slice(2, 6);
-                    const dot = { id: dotId, x: src.x, y: src.y, color: "var(--warn)" };
+                    const dot = { id: dotId, x: src.x, y: src.y, color: "var(--ot-warning)" };
                     bundleTransitsRef.current.push(dot);
                     const dur = Math.max(50, 400 / animationSpeed);
                     const startTime = performance.now();
@@ -807,7 +808,7 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
         const linkGroup = svg.select<SVGGElement>("g.links");
 
         // Remove previous highlights
-        linkGroup.selectAll("line.highlighted").remove();
+        linkGroup.selectAll("line.dtn-link-highlighted").remove();
 
         if (!highlightPath || highlightPath.length < 2) return;
 
@@ -820,7 +821,7 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
             if (src && dst && src.x != null && src.y != null && dst.x != null && dst.y != null) {
                 linkGroup
                     .append("line")
-                    .attr("class", "link highlighted")
+                    .attr("class", "dtn-link dtn-link-highlighted")
                     .attr("x1", src.x)
                     .attr("y1", src.y)
                     .attr("x2", dst.x)
@@ -830,33 +831,37 @@ export default function NetworkGraph({ numNodes, events, onNodeSelect, highlight
     }, [highlightPath]);
 
     return (
-        <div className="main" ref={containerRef}>
-            <svg ref={svgRef} id="network-svg" />
-            <div className="tooltip" ref={tooltipRef} />
-            <div className="graph-legend">
-                <div className="legend-section">
-                    <div className="legend-title">Node Roles</div>
-                    <div className="legend-item">
-                        <span className="legend-dot source"></span>
+        <div className="relative h-full w-full" ref={containerRef}>
+            <svg ref={svgRef} className="block h-full w-full" />
+            <div
+                ref={tooltipRef}
+                className="pointer-events-none absolute z-[100] hidden max-w-[280px] rounded-ot-md border border-ot-border bg-ot-bg px-4 py-3 text-xs shadow-ot-lg"
+                style={{ display: "none" }}
+            />
+            <div className="pointer-events-none absolute bottom-4 left-4 z-30 flex gap-4 rounded-ot-md border border-ot-border bg-ot-bg px-4 py-3.5 text-[11px] shadow-ot-md">
+                <div className="flex flex-col gap-1.5">
+                    <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-ot-muted">Node Roles</div>
+                    <div className="flex items-center gap-2 font-medium text-ot-text">
+                        <span className="inline-block h-2.5 w-2.5 rounded-full border-[1.5px] border-navy"></span>
                         <span>Source</span>
                     </div>
-                    <div className="legend-item">
-                        <span className="legend-dot relay"></span>
+                    <div className="flex items-center gap-2 font-medium text-ot-text">
+                        <span className="inline-block h-2.5 w-2.5 rounded-full border-[1.5px] border-dashed border-navy"></span>
                         <span>Relay</span>
                     </div>
-                    <div className="legend-item">
-                        <span className="legend-dot destination"></span>
+                    <div className="flex items-center gap-2 font-medium text-ot-text">
+                        <span className="inline-block h-2.5 w-2.5 rounded-full border-[1.5px] border-success"></span>
                         <span>Destination</span>
                     </div>
                 </div>
-                <div className="legend-section">
-                    <div className="legend-title">Connections</div>
-                    <div className="legend-item">
-                        <span className="legend-line active"></span>
+                <div className="flex flex-col gap-1.5">
+                    <div className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-ot-muted">Connections</div>
+                    <div className="flex items-center gap-2 font-medium text-ot-text">
+                        <span className="inline-block h-[2.5px] w-5 bg-gradient-to-r from-navy to-info"></span>
                         <span>Active Contact</span>
                     </div>
-                    <div className="legend-item">
-                        <span className="legend-line transfer"></span>
+                    <div className="flex items-center gap-2 font-medium text-ot-text">
+                        <span className="inline-block h-0 w-5 border-t-[1.5px] border-dashed border-warning opacity-60"></span>
                         <span>Transfer</span>
                     </div>
                 </div>

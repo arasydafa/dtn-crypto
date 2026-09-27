@@ -1,4 +1,5 @@
 import type { MetricsResponse, SimulationEvent } from "../types";
+import { Card } from "@omega-os/ui";
 
 interface Props {
   metrics: MetricsResponse;
@@ -15,59 +16,32 @@ export default function NetworkStats({ metrics, events }: Props) {
 
   const uniquePairs = new Set(transfers.map((e) => `${e.node_from}->${e.node_to}`)).size;
 
+  const stats: Array<[string | number, string]> = [
+    [metrics.total_bundles, "Total Bundles"],
+    [metrics.total_transfers, "Total Transfers"],
+    [`${(metrics.delivery_ratio * 100).toFixed(1)}%`, "Delivery Ratio"],
+    [`${metrics.avg_latency_seconds.toFixed(2)}s`, "Avg Latency"],
+    [avgHops.toFixed(1), "Avg Hops"],
+    [contacts.length, "Total Contacts"],
+    [uniquePairs, "Unique Pairs"],
+    [metrics.integrity_failures, "Integrity Fails"],
+    [`${metrics.avg_encrypt_overhead_ms.toFixed(1)}ms`, "Avg Encrypt"],
+    [`${metrics.avg_decrypt_overhead_ms.toFixed(1)}ms`, "Avg Decrypt"],
+    [`${metrics.avg_transmission_time_ms.toFixed(1)}ms`, "Avg TX Time"],
+    [`${(metrics.bundle_drop_rate * 100).toFixed(1)}%`, "Drop Rate"],
+  ];
+
   return (
-    <div className="chart-card" style={{ overflow: "auto" }}>
-      <h3>Network Statistics</h3>
-      <div className="stats-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        <div className="stat-item">
-          <div className="stat-value">{metrics.total_bundles}</div>
-          <div className="stat-label">Total Bundles</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{metrics.total_transfers}</div>
-          <div className="stat-label">Total Transfers</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{(metrics.delivery_ratio * 100).toFixed(1)}%</div>
-          <div className="stat-label">Delivery Ratio</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{metrics.avg_latency_seconds.toFixed(2)}s</div>
-          <div className="stat-label">Avg Latency</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{avgHops.toFixed(1)}</div>
-          <div className="stat-label">Avg Hops</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{contacts.length}</div>
-          <div className="stat-label">Total Contacts</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{uniquePairs}</div>
-          <div className="stat-label">Unique Pairs</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{metrics.integrity_failures}</div>
-          <div className="stat-label">Integrity Fails</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{metrics.avg_encrypt_overhead_ms.toFixed(1)}ms</div>
-          <div className="stat-label">Avg Encrypt</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{metrics.avg_decrypt_overhead_ms.toFixed(1)}ms</div>
-          <div className="stat-label">Avg Decrypt</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{metrics.avg_transmission_time_ms.toFixed(1)}ms</div>
-          <div className="stat-label">Avg TX Time</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value">{(metrics.bundle_drop_rate * 100).toFixed(1)}%</div>
-          <div className="stat-label">Drop Rate</div>
-        </div>
+    <Card className="overflow-auto">
+      <h3 className="mb-1.5 text-[10px] uppercase tracking-wider text-ot-muted">Network Statistics</h3>
+      <div className="grid grid-cols-2 gap-2">
+        {stats.map(([value, label]) => (
+          <div key={label} className="rounded-ot-md bg-ot-bg px-3 py-2.5 text-center">
+            <div className="text-xl font-bold text-navy-text">{value}</div>
+            <div className="mt-0.5 text-[10px] uppercase tracking-wider text-ot-muted">{label}</div>
+          </div>
+        ))}
       </div>
-    </div>
+    </Card>
   );
 }

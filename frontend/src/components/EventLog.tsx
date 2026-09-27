@@ -1,19 +1,23 @@
 import { useState, useMemo } from "react";
+import type { ReactElement } from "react";
 import type { SimulationEvent } from "../types";
+import { Button, Badge, LogViewer } from "@omega-os/ui";
+import type { LogLevel } from "@omega-os/ui";
+import { List, Link, Unlink, Package, Send, Check, Clock, Trash2, ShieldAlert } from "lucide-react";
 
 interface Props {
   events: SimulationEvent[];
 }
 
-const typeConfig: Record<string, { label: string; color: string; icon: string }> = {
-    CONTACT_START: { label: "CONTACT", color: "var(--active)", icon: "🔗" },
-    CONTACT_END: { label: "CONTACT", color: "var(--idle)", icon: "❌" },
-    BUNDLE_CREATE: { label: "CREATE", color: "var(--accent2)", icon: "📦" },
-    BUNDLE_TRANSFER: { label: "TRANSFER", color: "var(--warn)", icon: "📤" },
-    BUNDLE_DELIVER: { label: "DELIVER", color: "var(--delivered)", icon: "✅" },
-    BUNDLE_EXPIRE: { label: "EXPIRE", color: "var(--danger)", icon: "⏰" },
-    BUNDLE_DROPPED: { label: "DROP", color: "var(--danger)", icon: "🗑" },
-    INTEGRITY_FAIL: { label: "INTEGRITY", color: "var(--danger)", icon: "🔒" },
+const typeMeta: Record<string, { label: string; level: LogLevel; icon: ReactElement }> = {
+    CONTACT_START: { label: "CONTACT", level: "info", icon: <Link size={12} aria-hidden /> },
+    CONTACT_END: { label: "CONTACT", level: "debug", icon: <Unlink size={12} aria-hidden /> },
+    BUNDLE_CREATE: { label: "CREATE", level: "info", icon: <Package size={12} aria-hidden /> },
+    BUNDLE_TRANSFER: { label: "TRANSFER", level: "info", icon: <Send size={12} aria-hidden /> },
+    BUNDLE_DELIVER: { label: "DELIVER", level: "info", icon: <Check size={12} aria-hidden /> },
+    BUNDLE_EXPIRE: { label: "EXPIRE", level: "warn", icon: <Clock size={12} aria-hidden /> },
+    BUNDLE_DROPPED: { label: "DROP", level: "error", icon: <Trash2 size={12} aria-hidden /> },
+    INTEGRITY_FAIL: { label: "INTEGRITY", level: "error", icon: <ShieldAlert size={12} aria-hidden /> },
 };
 
 function getEventDetail(evt: SimulationEvent): string {
@@ -71,61 +75,53 @@ export default function EventLog({ events }: Props) {
                 getEventDetail(e).toLowerCase().includes(q)
             );
         }
-        return [...result].reverse();
+        return result;
     }, [events, activeFilter, searchText]);
 
     return (
-        <div className="app-log">
-            <div className="app-log-header" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <input
-                        className="preset-input"
-                        style={{ flex: 1 }}
-                        placeholder="Search events..."
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                    />
-                    <span className="app-log-count">{filtered.length} / {events.length}</span>
-                </div>
-                <div className="bundle-filter-chips">
-                    <button
-                        className={`bundle-filter-chip${activeFilter === "ALL" ? " active" : ""}`}
-                        onClick={() => setActiveFilter("ALL")}
-                    >
-                        All <span className="chip-count">{events.length}</span>
-                    </button>
-                    {eventTypes.map((t) => {
-                        const cfg = typeConfig[t];
-                        return (
-                            <button
-                                key={t}
-                                className={`bundle-filter-chip${activeFilter === t ? " active" : ""}`}
-                                onClick={() => setActiveFilter(activeFilter === t ? "ALL" : t)}
-                            >
-                                {cfg?.icon} {cfg?.label || t} <span className="chip-count">{typeCounts[t]}</span>
-                            </button>
-                        );
-                    })}
-                </div>
+        <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+                <input
+                    className="h-10 w-full rounded-ot-md border border-ot-border bg-ot-bg px-3 font-sans text-sm text-ot-text outline-none transition-shadow placeholder:text-ot-muted focus:border-navy"
+                    style={{ flex: 1 }}
+                    placeholder="Search events..."
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                />
+                <span className="whitespace-nowrap text-xs text-ot-muted">{filtered.length} / {events.length}</span>
             </div>
-            <div className="event-log">
-                {filtered.length === 0 ? (
-                    <div className="event-log-empty">No events match the filter.</div>
-                ) : (
-                    filtered.map((evt, i) => {
-                        const cfg = typeConfig[evt.type] || { label: evt.type, color: "var(--text2)", icon: "•" };
-                        return (
-                            <div key={i} className="event-log-row">
-                                <span className="event-log-time">t={evt.time.toFixed(1)}s</span>
-                                <span className="event-log-badge" style={{ color: cfg.color, borderColor: cfg.color }}>
-                                    {cfg.icon} {cfg.label}
-                                </span>
-                                <span className="event-log-detail">{getEventDetail(evt)}</span>
-                            </div>
-                        );
-                    })
-                )}
+            <div className="flex flex-wrap gap-1.5">
+                <Button
+                    variant={activeFilter === "ALL" ? "primary" : "secondary"}
+                    size="sm"
+                    onClick={() => setActiveFilter("ALL")}
+                    icon={<List size={12} aria-hidden />}
+                >
+                    All <Badge tone={activeFilter === "ALL" ? "navy" : "grey"}>{events.length}</Badge>
+                </Button>
+                {eventTypes.map((t) => {
+                    const meta = typeMeta[t];
+                    return (
+                        <Button
+                            key={t}
+                            variant={activeFilter === t ? "primary" : "secondary"}
+                            size="sm"
+                            onClick={() => setActiveFilter(activeFilter === t ? "ALL" : t)}
+                            icon={meta?.icon ? <>{meta.icon}</> : undefined}
+                        >
+                            {meta?.label || t} <Badge tone={activeFilter === t ? "navy" : "grey"}>{typeCounts[t]}</Badge>
+                        </Button>
+                    );
+                })}
             </div>
+            <LogViewer
+                lines={filtered.map((evt, i) => ({
+                    id: `${evt.time}-${evt.bundle_id}-${i}`,
+                    level: typeMeta[evt.type]?.level ?? "info",
+                    text: `[${typeMeta[evt.type]?.label ?? evt.type}] ${getEventDetail(evt)}`,
+                    time: `t=${evt.time.toFixed(1)}s`,
+                }))}
+            />
         </div>
     );
 }

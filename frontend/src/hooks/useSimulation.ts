@@ -228,6 +228,8 @@ export function useSimulation() {
     setTheme((prev) => {
       const next = prev === "dark" ? "light" : "dark";
       document.body.classList.toggle("light-theme", next === "light");
+      // OmegaOS uses `.dark` on <html> (light-default); keep in sync.
+      document.documentElement.classList.toggle("dark", next === "dark");
       return next;
     });
   }, []);

@@ -19,6 +19,7 @@ import {
     Legend,
 } from "chart.js";
 import type { MetricsResponse, SimulationEvent } from "../../types";
+import { Card } from "@omega-os/ui";
 
 Chart.register(DoughnutController, ArcElement, Legend);
 
@@ -125,11 +126,11 @@ export default function StatusChart({ metrics, events }: Props) {
     }, [metrics, events]);
 
     return (
-        <div className="chart-card">
-            <h3>Bundle Status</h3>
-            <div className="chart-container">
-                <canvas ref={canvasRef} />
+        <Card>
+            <h3 className="mb-1.5 text-[10px] uppercase tracking-wider text-ot-muted">Bundle Status</h3>
+            <div className="relative min-h-0 flex-1">
+                <canvas ref={canvasRef} className="!h-full !w-full" />
             </div>
-        </div>
+        </Card>
     );
 }

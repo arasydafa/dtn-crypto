@@ -1,21 +1,27 @@
 /**
  * @module components/TopNav
- * @description Top navigation bar with status display, theme toggle, fullscreen,
- * wiki, and simulation controls (Run, Reset, Export).
+ * @description Top navigation bar — OmegaOS phase 1.
  *
- * Shows a colored status dot (idle/running/done/error) with a text label.
- * All buttons have keyboard shortcut hints in their tooltips.
- *
- * @example
- * ```tsx
- * <TopNav
- *   status={sim.status}
- *   statusText={sim.statusText}
- *   onRun={sim.run}
- *   ...
- * />
- * ```
+ * Uses @omega-os/ui Button + Badge + Tooltip with lucide-react icons.
+ * Layout: brand left, status center, controls right.
  */
+
+import { Button } from "@omega-os/ui";
+import { Badge } from "@omega-os/ui";
+import { Tooltip } from "@omega-os/ui";
+import { toggleThemeReveal } from "@omega-os/ui";
+import {
+  Menu,
+  Sun,
+  Moon,
+  BookOpen,
+  Maximize,
+  Minimize,
+  PanelBottom,
+  Download,
+  RotateCcw,
+  Play,
+} from "lucide-react";
 
 /** Props for the TopNav component. */
 interface Props {
@@ -65,13 +71,15 @@ interface Props {
   onWiki: () => void;
 }
 
+function statusTone(status: Props["status"]): "grey" | "warning" | "success" | "danger" {
+  if (status === "running") return "warning";
+  if (status === "done") return "success";
+  if (status === "error") return "danger";
+  return "grey";
+}
+
 /**
- * Top navigation bar component.
- *
- * Layout:
- * - **Left**: hamburger toggle, brand name ("DTN Crypto Simulator v0.2")
- * - **Center**: status dot + status text
- * - **Right**: theme, wiki, fullscreen, bottom panel toggle, export, reset, run
+ * Top navigation bar component (OmegaOS).
  */
 export default function TopNav({
   sidebarCollapsed,
@@ -90,106 +98,112 @@ export default function TopNav({
   onToggleTheme,
   onWiki,
 }: Props) {
-  const statusClass =
-    status === "running"
-      ? "nav-status running"
-      : status === "done"
-        ? "nav-status done"
-        : status === "error"
-          ? "nav-status error"
-          : "nav-status";
-
   return (
-    <header className="top-nav">
-      <div className="nav-left">
-        <button
-          className="nav-toggle"
-          onClick={onToggleSidebar}
-          title={sidebarCollapsed ? "Expand sidebar (Ctrl+S)" : "Collapse sidebar (Ctrl+S)"}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
-        </button>
-        <div className="nav-brand">
-          <span className="nav-title">DTN Crypto</span>
-          <span className="nav-subtitle">Simulator v0.2</span>
+    <header className="flex h-14 flex-shrink-0 items-center justify-between gap-3 border-b border-ot-border bg-ot-bg px-4">
+      <div className="flex items-center gap-3">
+        <Tooltip content={sidebarCollapsed ? "Expand sidebar (Ctrl+S)" : "Collapse sidebar (Ctrl+S)"}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleSidebar}
+            icon={<Menu size={18} aria-hidden />}
+            aria-label="Toggle sidebar"
+          />
+        </Tooltip>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-base font-bold tracking-tight text-ot-text">DTN Crypto</span>
+          <span className="text-[11px] font-medium text-ot-muted">Simulator v0.2</span>
         </div>
       </div>
 
-      <div className="nav-center">
-        <div className={statusClass}>
-          <span className="nav-status-dot" />
-          <span className="nav-status-text">{statusText}</span>
-        </div>
+      <div className="flex items-center">
+        <Badge tone={statusTone(status)}>
+          <span
+            aria-hidden
+            className={`inline-block h-2 w-2 rounded-full ${
+              status === "running"
+                ? "bg-warning"
+                : status === "done"
+                  ? "bg-success"
+                  : status === "error"
+                    ? "bg-danger"
+                    : "bg-ot-muted"
+            }`}
+          />
+          {statusText}
+        </Badge>
       </div>
 
-      <div className="nav-right">
-        <button className="nav-btn nav-btn-icon" onClick={onToggleTheme} title="Toggle theme">
-          {theme === "dark" ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-              <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            </svg>
-          )}
-        </button>
+      <div className="flex items-center gap-1.5">
+        <Tooltip content="Toggle theme">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => toggleThemeReveal(e.clientX, e.clientY, onToggleTheme)}
+            icon={theme === "dark" ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}
+            aria-label="Toggle theme"
+          />
+        </Tooltip>
 
-        <button className="nav-btn nav-btn-icon" onClick={onWiki} title="DTN Crypto Wiki">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-          </svg>
-        </button>
+        <Tooltip content="DTN Crypto Wiki">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onWiki}
+            icon={<BookOpen size={16} aria-hidden />}
+            aria-label="Open wiki"
+          />
+        </Tooltip>
 
-        <button className="nav-btn nav-btn-icon" onClick={onFullscreen} title={isFullscreen ? "Exit fullscreen (F11)" : "Fullscreen (F11)"}>
-          {isFullscreen ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-            </svg>
-          )}
-        </button>
+        <Tooltip content={isFullscreen ? "Exit fullscreen (F11)" : "Fullscreen (F11)"}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onFullscreen}
+            icon={isFullscreen ? <Minimize size={16} aria-hidden /> : <Maximize size={16} aria-hidden />}
+            aria-label="Toggle fullscreen"
+          />
+        </Tooltip>
 
-        <button className="nav-btn nav-btn-icon" onClick={onToggleBottomPanel} title={bottomPanelOpen ? "Hide panel (Ctrl+B)" : "Show panel (Ctrl+B)"}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: bottomPanelOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
+        <Tooltip content={bottomPanelOpen ? "Hide panel (Ctrl+B)" : "Show panel (Ctrl+B)"}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleBottomPanel}
+            icon={<PanelBottom size={16} aria-hidden />}
+            aria-label="Toggle bottom panel"
+          />
+        </Tooltip>
 
-        <button className="nav-btn nav-btn-export" disabled={!hasResult} onClick={onExport} title="Export results">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          <span>Export</span>
-        </button>
+        <Tooltip content="Export results">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={!hasResult}
+            onClick={onExport}
+            icon={<Download size={16} aria-hidden />}
+          >
+            Export
+          </Button>
+        </Tooltip>
 
-        <button className="nav-btn nav-btn-reset" onClick={onReset} title="Reset simulation">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="1 4 1 10 7 10" />
-            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-          </svg>
-          <span>Reset</span>
-        </button>
+        <Tooltip content="Reset simulation">
+          <Button variant="secondary" size="sm" onClick={onReset} icon={<RotateCcw size={16} aria-hidden />}>
+            Reset
+          </Button>
+        </Tooltip>
 
-        <button className="nav-btn nav-btn-run" disabled={status === "running"} onClick={onRun} title="Run simulation (Ctrl+R)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="5 3 19 12 5 21 5 3" />
-          </svg>
-          <span>Run</span>
-        </button>
+        <Tooltip content="Run simulation (Ctrl+R)">
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={status === "running"}
+            onClick={onRun}
+            icon={<Play size={16} aria-hidden />}
+          >
+            Run
+          </Button>
+        </Tooltip>
       </div>
     </header>
   );

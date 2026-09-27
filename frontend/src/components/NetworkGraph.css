@@ -1,0 +1,45 @@
+/* NetworkGraph SVG-only styles. Overlays (legend, tooltip) use Tailwind ot tokens.
+   Kept as CSS because D3 sets these classes/attributes directly on SVG nodes. */
+
+.dtn-graph-label {
+  font-size: 10px;
+  fill: var(--ot-muted);
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.dtn-link {
+  stroke: var(--ot-border);
+  stroke-width: 1.5;
+  transition: stroke 0.3s, stroke-width 0.3s;
+}
+.dtn-link-active {
+  stroke: url(#linkGradient);
+  stroke-width: 2.5;
+  stroke-dasharray: 8, 4;
+  animation: dtn-dash 0.8s linear infinite;
+}
+.dtn-link-transfer {
+  stroke: var(--ot-warning);
+  stroke-width: 1.5;
+  stroke-opacity: 0.5;
+  stroke-dasharray: 5, 4;
+  animation: dtn-transfer-flow 1s linear infinite;
+}
+.dtn-link-highlighted {
+  stroke: url(#pathGradient);
+  stroke-width: 3.5;
+  filter: drop-shadow(0 0 4px var(--ot-shadow-md));
+}
+
+.dtn-role-ring {
+  fill: none;
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+.dtn-source-ring { stroke: var(--ot-navy); }
+.dtn-relay-ring { stroke: var(--ot-navy); stroke-dasharray: 3, 3; }
+.dtn-destination-ring { stroke: var(--ot-success); }
+
+@keyframes dtn-dash { to { stroke-dashoffset: -12; } }
+@keyframes dtn-transfer-flow { to { stroke-dashoffset: -18; } }

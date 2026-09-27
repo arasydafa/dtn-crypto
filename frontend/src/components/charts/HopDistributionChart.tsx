@@ -8,6 +8,7 @@ import {
   Tooltip,
 } from "chart.js";
 import type { MetricsResponse } from "../../types";
+import { Card } from "@omega-os/ui";
 
 Chart.register(BarController, BarElement, LinearScale, CategoryScale, Tooltip);
 
@@ -79,11 +80,11 @@ export default function HopDistributionChart({ metrics }: Props) {
   }, [metrics]);
 
   return (
-    <div className="chart-card">
-      <h3>Hop Count Distribution</h3>
-      <div className="chart-container">
-        <canvas ref={canvasRef} />
+    <Card>
+      <h3 className="mb-1.5 text-[10px] uppercase tracking-wider text-ot-muted">Hop Count Distribution</h3>
+      <div className="relative min-h-0 flex-1">
+        <canvas ref={canvasRef} className="!h-full !w-full" />
       </div>
-    </div>
+    </Card>
   );
 }

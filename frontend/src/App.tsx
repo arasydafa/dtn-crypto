@@ -14,8 +14,9 @@
  * ```
  */
 
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
-import "./App.css";
+import { useMemo, useState, useCallback, useRef, useEffect, lazy, Suspense } from "react";
+import { Button } from "@omega-os/ui";
+import { Zap, Circle, Grid2x2, TreePine, ChevronDown } from "lucide-react";
 import { useSimulation } from "./hooks/useSimulation";
 import TopNav from "./components/TopNav";
 import Sidebar from "./components/Sidebar";
@@ -23,8 +24,10 @@ import NetworkGraph from "./components/NetworkGraph";
 import MetricsPanel from "./components/MetricsPanel";
 import InspectorPanel from "./components/InspectorPanel";
 import NodeInspectorModal from "./components/NodeInspectorModal";
-import WikiModal from "./components/WikiModal";
 import ErrorBoundary from "./components/ErrorBoundary";
+
+// Lazy: pulls in react-markdown via @omega-os/ui Markdown only when opened.
+const WikiModal = lazy(() => import("./components/WikiModal"));
 
 /** Default height of the bottom metrics panel in pixels. */
 const DEFAULT_BOTTOM_HEIGHT = 260;
@@ -162,7 +165,7 @@ export default function App() {
   }, [isDragging, sim]);
 
   return (
-    <div className="app-wrapper">
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-ot-bg text-ot-text">
       <TopNav
         sidebarCollapsed={sim.sidebarCollapsed}
         onToggleSidebar={sim.toggleSidebar}
@@ -181,7 +184,7 @@ export default function App() {
         onWiki={() => setShowWiki(true)}
       />
 
-      <div className="layout-body">
+      <div className="flex flex-1 overflow-hidden">
         <Sidebar
           collapsed={sim.sidebarCollapsed}
           config={sim.config}
@@ -201,8 +204,8 @@ export default function App() {
           onToggleSidebar={sim.toggleSidebar}
         />
 
-        <div className="main-area">
-          <div className="graph-container">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="relative min-h-0 flex-1 overflow-hidden">
             <NetworkGraph
               numNodes={sim.config.nodes}
               events={sim.events}
@@ -212,24 +215,23 @@ export default function App() {
               runId={sim.runId}
               layout={graphLayout}
             />
-            {/* Layout selector */}
-            <div style={{
-              position: "absolute", top: 12, left: 12, zIndex: 30,
-              display: "flex", gap: 4, background: "var(--surface)",
-              border: "1px solid var(--glass-border)", borderRadius: "var(--radius)",
-              padding: 4, boxShadow: "var(--shadow-sm)"
-            }}>
-              {(["force", "circular", "grid", "tree"] as const).map((l) => (
-                <button
-                  key={l}
-                  className={`bundle-filter-chip${graphLayout === l ? " active" : ""}`}
-                  onClick={() => setGraphLayout(l)}
-                  style={{ fontSize: 10, padding: "3px 8px", textTransform: "capitalize" }}
-                  title={`${l} layout`}
-                >
-                  {l === "force" && "⚡"} {l === "circular" && "⭕"} {l === "grid" && "⊞"} {l === "tree" && "🌲"} {l}
-                </button>
-              ))}
+            {/* Layout selector — OmegaOS phase 1, lucide icons only */}
+            <div className="absolute left-3 top-3 z-30 flex gap-1 rounded-ot-md border border-ot-border bg-ot-bg p-1 shadow-ot-sm">
+              {(["force", "circular", "grid", "tree"] as const).map((l) => {
+                const Icon = l === "force" ? Zap : l === "circular" ? Circle : l === "grid" ? Grid2x2 : TreePine;
+                return (
+                  <Button
+                    key={l}
+                    variant={graphLayout === l ? "primary" : "ghost"}
+                    size="sm"
+                    onClick={() => setGraphLayout(l)}
+                    icon={<Icon size={12} aria-hidden />}
+                    title={`${l} layout`}
+                  >
+                    <span className="capitalize">{l}</span>
+                  </Button>
+                );
+              })}
             </div>
             <InspectorPanel
               target={sim.selectedTarget?.type === "bundle" ? sim.selectedTarget : null}
@@ -241,27 +243,23 @@ export default function App() {
           </div>
 
           <div
-            className={`bottom-drag-handle${sim.bottomPanelOpen ? "" : " collapsed"}`}
+            className={`group relative flex h-1.5 flex-shrink-0 cursor-ns-resize items-center justify-center transition-colors hover:bg-navy-bg ${sim.bottomPanelOpen ? "" : "cursor-pointer"}`}
             onMouseDown={sim.bottomPanelOpen ? onDragStart : undefined}
+            onClick={sim.bottomPanelOpen ? undefined : () => sim.toggleBottomPanel()}
             title={sim.bottomPanelOpen ? "Drag to resize or click to collapse" : "Click to expand panel"}
           >
-            <div className="bottom-drag-line" />
-            <button
-              className="bottom-collapse-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                sim.toggleBottomPanel();
-              }}
-              title={sim.bottomPanelOpen ? "Collapse panel" : "Expand panel"}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: sim.bottomPanelOpen ? "none" : "rotate(180deg)" }}>
-                <polyline points="6 15 12 9 18 15" />
-              </svg>
-            </button>
+            <div className="h-[3px] w-10 rounded-full bg-ot-border transition-colors group-hover:bg-navy" />
+            <span className="absolute right-3 grid h-5 w-5 place-items-center rounded-ot-sm border border-ot-border bg-ot-surface text-ot-muted opacity-0 transition-opacity group-hover:opacity-100">
+              <ChevronDown size={12} aria-hidden className={sim.bottomPanelOpen ? "" : "rotate-180"} />
+            </span>
           </div>
 
           <div
-            className={sim.bottomPanelOpen ? "bottom" : "bottom bottom-collapsed"}
+            className={
+              sim.bottomPanelOpen
+                ? "flex min-h-0 flex-col overflow-hidden border-t border-ot-border bg-ot-bg transition-[height] duration-150"
+                : "flex min-h-[52px] items-center border-t border-ot-border bg-ot-bg px-4"
+            }
             style={sim.bottomPanelOpen ? { height: bottomHeight } : undefined}
           >
             <MetricsPanel
@@ -275,7 +273,11 @@ export default function App() {
         </div>
       </div>
 
-      {showWiki && <WikiModal onClose={() => setShowWiki(false)} />}
+      {showWiki && (
+        <Suspense fallback={null}>
+          <WikiModal onClose={() => setShowWiki(false)} />
+        </Suspense>
+      )}
 
       {sim.selectedTarget?.type === "node" && sim.nodeDetails[sim.selectedTarget.id] && (
         <NodeInspectorModal

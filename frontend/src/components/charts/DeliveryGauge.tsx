@@ -13,6 +13,7 @@
  */
 
 import type { MetricsResponse } from "../../types";
+import { Card } from "@omega-os/ui";
 
 /** Props for the DeliveryGauge component. */
 interface Props {
@@ -42,14 +43,14 @@ export default function DeliveryGauge({ metrics, delivered, total }: Props) {
         : "--";
 
   return (
-    <div className="chart-card">
-      <h3>Delivery Ratio</h3>
-      <div className="gauge-wrap">
+    <Card>
+      <h3 className="mb-1.5 text-[10px] uppercase tracking-wider text-ot-muted">Delivery Ratio</h3>
+      <div className="flex flex-1 items-center justify-center">
         <div>
-          <div className="gauge-value">{ratio === "--" ? ratio : ratio + "%"}</div>
-          <div className="gauge-label">of bundles delivered</div>
+          <div className="bg-gradient-to-r from-navy to-info bg-clip-text text-[28px] font-bold text-transparent">{ratio === "--" ? ratio : ratio + "%"}</div>
+          <div className="text-center text-[10px] text-ot-muted">of bundles delivered</div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
