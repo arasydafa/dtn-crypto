@@ -1,23 +1,13 @@
 /**
  * @module components/BundleInspector
- * @description Detailed bundle inspector showing path, timing, and content stages.
+ * @description Detailed bundle inspector — OmegaOS phase 2.
  *
- * Renders the complete bundle lifecycle: status badge, routing path timeline,
- * encrypt/transmit/decrypt timing waterfall, and three content stages
- * (plaintext at source, encrypted in transit, decrypted at destination).
- *
- * Contains three internal helper components:
- * - {@link StatusBadge} — colored badge for bundle status
- * - {@link TimingWaterfall} — horizontal stacked bar for timing breakdown
- * - {@link AccordionSection} — collapsible section for content stages
- *
- * @example
- * ```tsx
- * <BundleInspector bundle={bundleDetails["abc-123"]} />
- * ```
+ * Status -> Badge, path -> Timeline, content stages -> Accordion + CodeBlock.
+ * Timing waterfall stays custom (stacked encrypt/transmit/decrypt has no
+ * OmegaOS equivalent yet — candidate for a future OmegaOS component).
  */
 
-import { useState } from "react";
+import { Badge, Accordion, Timeline, CodeBlock } from "@omega-os/ui";
 import type { BundleDetail } from "../types";
 
 /** Props for the BundleInspector component. */
@@ -26,93 +16,53 @@ interface Props {
   bundle: BundleDetail;
 }
 
-/**
- * Colored badge indicating bundle delivery status.
- * @param bundle - Bundle to display status for.
- */
 function StatusBadge({ bundle }: { bundle: BundleDetail }) {
-  if (bundle.delivered)
-    return <span className="badge badge-delivered">Delivered</span>;
-  if (bundle.dropped)
-    return <span className="badge badge-dropped">Dropped</span>;
-  if (bundle.expired)
-    return <span className="badge badge-expired">Expired</span>;
-  return <span className="badge badge-transit">In Transit</span>;
+  if (bundle.delivered) return <Badge tone="success">Delivered</Badge>;
+  if (bundle.dropped) return <Badge tone="danger">Dropped</Badge>;
+  if (bundle.expired) return <Badge tone="grey">Expired</Badge>;
+  return <Badge tone="warning">In Transit</Badge>;
 }
 
 /**
  * Horizontal stacked bar showing encrypt/transmit/decrypt time breakdown.
- * @param bundle - Bundle with timing data.
+ * Custom — no OmegaOS equivalent for a 3-segment timing bar yet.
  */
 function TimingWaterfall({ bundle }: { bundle: BundleDetail }) {
   const enc = bundle.encrypt_time_ms;
   const tx = bundle.transmission_time_ms;
   const dec = bundle.decrypt_time_ms ?? 0;
   const total = enc + tx + dec;
-  if (total === 0) return <p style={{ color: "var(--text2)", fontSize: 12 }}>No timing data</p>;
+  if (total === 0) return <p className="text-xs text-ot-muted">No timing data</p>;
 
   const pEnc = (enc / total) * 100;
   const pTx = (tx / total) * 100;
   const pDec = (dec / total) * 100;
 
   return (
-    <div className="timing-waterfall">
-      <div className="timing-bar-row">
-        <div className="timing-bar-track">
-          {pEnc > 0 && (
-            <div className="timing-segment encrypt" style={{ width: `${pEnc}%` }}>
-              {enc >= 0.1 ? `${enc.toFixed(1)}ms` : ""}
-            </div>
-          )}
-          {pTx > 0 && (
-            <div className="timing-segment transmit" style={{ width: `${pTx}%` }}>
-              {tx >= 0.1 ? `${tx.toFixed(1)}ms` : ""}
-            </div>
-          )}
-          {pDec > 0 && (
-            <div className="timing-segment decrypt" style={{ width: `${pDec}%` }}>
-              {dec >= 0.1 ? `${dec.toFixed(1)}ms` : ""}
-            </div>
-          )}
-        </div>
+    <div className="flex flex-col gap-2">
+      <div className="flex h-5 flex-1 overflow-hidden rounded-ot-sm bg-ot-surface-2">
+        {pEnc > 0 && (
+          <div className="flex h-full items-center justify-center text-[10px] font-semibold text-white bg-navy" style={{ width: `${pEnc}%` }}>
+            {enc >= 0.1 ? `${enc.toFixed(1)}ms` : ""}
+          </div>
+        )}
+        {pTx > 0 && (
+          <div className="flex h-full items-center justify-center text-[10px] font-semibold text-white bg-warning" style={{ width: `${pTx}%` }}>
+            {tx >= 0.1 ? `${tx.toFixed(1)}ms` : ""}
+          </div>
+        )}
+        {pDec > 0 && (
+          <div className="flex h-full items-center justify-center text-[10px] font-semibold text-white bg-success" style={{ width: `${pDec}%` }}>
+            {dec >= 0.1 ? `${dec.toFixed(1)}ms` : ""}
+          </div>
+        )}
       </div>
-      <div style={{ display: "flex", gap: 12, fontSize: 11, color: "var(--text2)", marginTop: 4 }}>
-        <span><span style={{ color: "var(--accent)" }}>Encrypt</span></span>
-        <span><span style={{ color: "var(--warn)" }}>Transmit</span></span>
-        <span><span style={{ color: "var(--accent2)" }}>Decrypt</span></span>
+      <div className="flex gap-3 text-[11px] text-ot-muted">
+        <span className="font-medium text-navy-text">Encrypt</span>
+        <span className="font-medium text-warning">Transmit</span>
+        <span className="font-medium text-success">Decrypt</span>
       </div>
-      <div className="timing-total">Total: {total.toFixed(2)} ms</div>
-    </div>
-  );
-}
-
-/**
- * Collapsible accordion section with a trigger button.
- * @param title - Section header text.
- * @param defaultOpen - Whether the section starts expanded.
- * @param children - Section content.
- */
-function AccordionSection({
-  title,
-  defaultOpen,
-  children,
-}: {
-  title: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen ?? false);
-  return (
-    <div className="accordion-item">
-      <button
-        className="accordion-trigger"
-        data-open={open}
-        onClick={() => setOpen(!open)}
-      >
-        {title}
-        <span className="arrow">{"\u25B6"}</span>
-      </button>
-      {open && <div className="accordion-content">{children}</div>}
+      <div className="text-right text-[11px] text-ot-muted">Total: {total.toFixed(2)} ms</div>
     </div>
   );
 }
@@ -127,17 +77,18 @@ function AccordionSection({
  * 4. **Content Stages** — Plaintext (source), Encrypted (transit), Decrypted (destination)
  */
 export default function BundleInspector({ bundle }: Props) {
+  const hops = bundle.hop_history;
   return (
-    <>
+    <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="inspector-section">
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           <StatusBadge bundle={bundle} />
-          <span style={{ fontSize: 12, color: "var(--text2)" }}>
+          <span className="text-xs text-ot-muted">
             {bundle.source} → {bundle.destination}
           </span>
         </div>
-        <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 4 }}>
+        <div className="text-[11px] text-ot-muted">
           Created at t={bundle.creation_time.toFixed(1)}s
           {bundle.delivery_time != null && ` | Delivered at t=${bundle.delivery_time.toFixed(1)}s`}
           {" | "}{bundle.hop_count} hop{bundle.hop_count !== 1 ? "s" : ""}
@@ -145,98 +96,92 @@ export default function BundleInspector({ bundle }: Props) {
         </div>
       </div>
 
-      {/* Path Timeline (R1) */}
-      <div className="inspector-section">
-        <h3>Bundle Path</h3>
-        {bundle.hop_history.length === 0 ? (
-          <p style={{ color: "var(--text2)", fontSize: 12 }}>No hops recorded (bundle may not have been transferred)</p>
+      {/* Path Timeline */}
+      <div className="flex flex-col gap-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ot-muted">Bundle Path</h3>
+        {hops.length === 0 ? (
+          <p className="text-xs text-ot-muted">No hops recorded (bundle may not have been transferred)</p>
         ) : (
-          <div className="hop-timeline">
-            {bundle.hop_history.map((hop, i) => (
-              <div className="hop-step" key={i}>
-                <div className="hop-info">
-                  <div className="hop-nodes">
-                    {hop.from_node} → {hop.to_node}
-                  </div>
-                  <div className="hop-meta">
-                    t={hop.time.toFixed(1)}s | tx={hop.transmission_time_ms.toFixed(2)}ms
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <Timeline
+            items={hops.map((hop, i) => ({
+              id: `hop-${i}`,
+              title: `${hop.from_node} → ${hop.to_node}`,
+              time: `t=${hop.time.toFixed(1)}s`,
+              description: `tx=${hop.transmission_time_ms.toFixed(2)}ms`,
+              tone: i === hops.length - 1 ? "success" : i === 0 ? "navy" : "grey",
+            }))}
+          />
         )}
       </div>
 
-      {/* Timing Waterfall (R4) */}
-      <div className="inspector-section">
-        <h3>Timing Breakdown</h3>
+      {/* Timing Waterfall */}
+      <div className="flex flex-col gap-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ot-muted">Timing Breakdown</h3>
         <TimingWaterfall bundle={bundle} />
       </div>
 
-      {/* Content Stages (R2) */}
-      <div className="inspector-section">
-        <h3>Content Stages</h3>
-        <div className="content-accordion">
-          <AccordionSection title="Plaintext (Source)" defaultOpen>
-            <div style={{ fontSize: 12 }}>
-              <div style={{ marginBottom: 6, color: "var(--text)" }}>
-                {bundle.plaintext_preview || "<empty>"}
-              </div>
-              <div style={{ fontSize: 11, color: "var(--text2)" }}>
-                Size: {bundle.payload_size_bytes} bytes
-              </div>
-            </div>
-          </AccordionSection>
-
-          <AccordionSection title="Encrypted (Transit)">
-            <div style={{ fontSize: 12 }}>
-              {bundle.encrypted_preview ? (
-                <div className="pem-preview" style={{ marginBottom: 6 }}>
-                  {bundle.encrypted_preview}...
+      {/* Content Stages */}
+      <div className="flex flex-col gap-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ot-muted">Content Stages</h3>
+        <Accordion
+          mode="multiple"
+          items={[
+            {
+              id: "plaintext",
+              title: "Plaintext (Source)",
+              defaultOpen: true,
+              content: (
+                <div className="flex flex-col gap-1.5 text-xs">
+                  <div className="text-ot-text">{bundle.plaintext_preview || "<empty>"}</div>
+                  <div className="text-[11px] text-ot-muted">Size: {bundle.payload_size_bytes} bytes</div>
                 </div>
-              ) : (
-                <div style={{ color: "var(--text2)", marginBottom: 6 }}>No encrypted data</div>
-              )}
-              {bundle.payload_hash && (
-                <div style={{ marginBottom: 6 }}>
-                  <span style={{ color: "var(--text2)", fontSize: 11 }}>SHA-256: </span>
-                  <span className="hash-display">{bundle.payload_hash}</span>
+              ),
+            },
+            {
+              id: "encrypted",
+              title: "Encrypted (Transit)",
+              content: (
+                <div className="flex flex-col gap-2 text-xs">
+                  {bundle.encrypted_preview ? (
+                    <CodeBlock code={`${bundle.encrypted_preview}...`} language="ciphertext" maxHeight={120} />
+                  ) : (
+                    <div className="text-ot-muted">No encrypted data</div>
+                  )}
+                  {bundle.payload_hash && (
+                    <CodeBlock code={bundle.payload_hash} language="sha-256" maxHeight={64} />
+                  )}
+                  {bundle.cpabe_policy && (
+                    <div>
+                      <span className="text-[11px] text-ot-muted">Policy: </span>
+                      <span className="text-xs text-navy-text">{bundle.cpabe_policy}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              {bundle.cpabe_policy && (
-                <div>
-                  <span style={{ color: "var(--text2)", fontSize: 11 }}>Policy: </span>
-                  <span style={{ color: "var(--accent)", fontSize: 12 }}>{bundle.cpabe_policy}</span>
+              ),
+            },
+            {
+              id: "decrypted",
+              title: "Decrypted (Destination)",
+              content: (
+                <div className="flex flex-col gap-1.5 text-xs">
+                  {bundle.integrity_verified === true && (
+                    <div><Badge tone="success">Integrity Verified</Badge></div>
+                  )}
+                  {bundle.integrity_verified === false && (
+                    <div><Badge tone="danger">Integrity Failed</Badge></div>
+                  )}
+                  {bundle.integrity_verified === null && (
+                    <div className="text-ot-muted">Not yet verified</div>
+                  )}
+                  {bundle.delivered && bundle.plaintext_preview && (
+                    <div className="text-ot-text">{bundle.plaintext_preview}</div>
+                  )}
                 </div>
-              )}
-            </div>
-          </AccordionSection>
-
-          <AccordionSection title="Decrypted (Destination)">
-            <div style={{ fontSize: 12 }}>
-              {bundle.integrity_verified === true && (
-                <div style={{ marginBottom: 6 }}>
-                  <span className="badge badge-verified">Integrity Verified</span>
-                </div>
-              )}
-              {bundle.integrity_verified === false && (
-                <div style={{ marginBottom: 6 }}>
-                  <span className="badge badge-failed">Integrity Failed</span>
-                </div>
-              )}
-              {bundle.integrity_verified === null && (
-                <div style={{ color: "var(--text2)", marginBottom: 6 }}>Not yet verified</div>
-              )}
-              {bundle.delivered && bundle.plaintext_preview && (
-                <div style={{ color: "var(--text)" }}>
-                  {bundle.plaintext_preview}
-                </div>
-              )}
-            </div>
-          </AccordionSection>
-        </div>
+              ),
+            },
+          ]}
+        />
       </div>
-    </>
+    </div>
   );
 }

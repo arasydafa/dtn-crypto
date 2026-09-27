@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { NodeDetail, BundleDetail } from "../types";
+import { Modal, Tabs, Badge, Accordion, CodeBlock, Button } from "@omega-os/ui";
+import { Server, Package, KeyRound } from "lucide-react";
 
 interface Props {
   node: NodeDetail;
@@ -9,221 +11,151 @@ interface Props {
 }
 
 function StatusBadge({ bundle }: { bundle: BundleDetail }) {
-  if (bundle.delivered) return <span className="badge badge-delivered">Delivered</span>;
-  if (bundle.dropped) return <span className="badge badge-dropped">Dropped</span>;
-  if (bundle.expired) return <span className="badge badge-expired">Expired</span>;
-  return <span className="badge badge-transit">In Transit</span>;
+  if (bundle.delivered) return <Badge tone="success">Delivered</Badge>;
+  if (bundle.dropped) return <Badge tone="danger">Dropped</Badge>;
+  if (bundle.expired) return <Badge tone="grey">Expired</Badge>;
+  return <Badge tone="warning">In Transit</Badge>;
 }
 
 export default function NodeInspectorModal({ node, nodeBundles, onSelectBundle, onClose }: Props) {
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "bundles" | "key">("overview");
+  const [activeTab, setActiveTab] = useState("overview");
 
   const inTransit = nodeBundles.filter((b) => !b.delivered && !b.dropped && !b.expired);
+  const role = node.attributes.find((a) => a.startsWith("role:"))?.split(":")[1] ?? "node";
 
   return (
-    <div className="node-overlay" onClick={onClose}>
-      <div className="node-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="node-modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <h2 className="node-modal-title">{node.node_id}</h2>
-            <span className="node-modal-id">
-              {node.attributes.find((a) => a.startsWith("role:"))?.split(":")[1] ?? "node"}
-            </span>
-          </div>
-          <button className="node-modal-close" onClick={onClose}>×</button>
+    <Modal
+      open
+      onClose={onClose}
+      title={node.node_id}
+      icon={<Server size={16} aria-hidden className="text-ot-muted" />}
+    >
+      <div className="flex max-h-[70vh] flex-col gap-3">
+        <div>
+          <Badge tone="navy">{role}</Badge>
         </div>
 
-        {/* Tabs */}
-        <div className="node-modal-tabs">
-          <button
-            className={`node-modal-tab${activeTab === "overview" ? " active" : ""}`}
-            onClick={() => setActiveTab("overview")}
-          >
-            Overview
-          </button>
-          <button
-            className={`node-modal-tab${activeTab === "bundles" ? " active" : ""}`}
-            onClick={() => setActiveTab("bundles")}
-          >
-            Bundles
-            {nodeBundles.length > 0 && <span className="node-modal-tab-count">{nodeBundles.length}</span>}
-          </button>
-          <button
-            className={`node-modal-tab${activeTab === "key" ? " active" : ""}`}
-            onClick={() => setActiveTab("key")}
-          >
-            Crypto
-          </button>
-        </div>
+        <Tabs
+          value={activeTab}
+          onChange={setActiveTab}
+          label="Node details"
+          tabs={[
+            { id: "overview", label: "Overview", icon: <Server size={15} aria-hidden /> },
+            {
+              id: "bundles",
+              label: `Bundles${nodeBundles.length > 0 ? ` (${nodeBundles.length})` : ""}`,
+              icon: <Package size={15} aria-hidden />,
+            },
+            { id: "key", label: "Crypto", icon: <KeyRound size={15} aria-hidden /> },
+          ]}
+        />
 
-        <div className="node-modal-content">
-          {/* Overview Tab */}
+        <div className="overflow-y-auto">
           {activeTab === "overview" && (
-            <div className="node-tab-content">
-              {/* Attributes */}
-              <div className="inspector-section">
-                <h3>Attributes</h3>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ot-muted">Attributes</h3>
                 {node.attributes.length === 0 ? (
-                  <p style={{ color: "var(--text2)", fontSize: 12 }}>No attributes assigned</p>
+                  <p className="text-xs text-ot-muted">No attributes assigned</p>
                 ) : (
-                  <div className="attr-chips">
+                  <div className="flex flex-wrap gap-1.5">
                     {node.attributes.map((attr) => (
-                      <span className="attr-chip" key={attr}>{attr}</span>
+                      <Badge key={attr} tone="navy">{attr}</Badge>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Stats */}
-              <div className="inspector-section">
-                <h3>Statistics</h3>
-                <div className="stats-grid">
-                  <div className="stat-item">
-                    <div className="stat-value">{node.delivered_count}</div>
-                    <div className="stat-label">Delivered</div>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-value">{node.buffer_count}</div>
-                    <div className="stat-label">In Buffer</div>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-value">{inTransit.length}</div>
-                    <div className="stat-label">Relayed</div>
-                  </div>
-                  <div className="stat-item">
-                    <div className="stat-value">{nodeBundles.length}</div>
-                    <div className="stat-label">Total Seen</div>
-                  </div>
+              <div className="flex flex-col gap-2">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ot-muted">Statistics</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: node.delivered_count, label: "Delivered" },
+                    { value: node.buffer_count, label: "In Buffer" },
+                    { value: inTransit.length, label: "Relayed" },
+                    { value: nodeBundles.length, label: "Total Seen" },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-ot-md border border-ot-border bg-ot-bg px-3 py-2.5 text-center">
+                      <div className="text-xl font-bold text-navy-text">{s.value}</div>
+                      <div className="mt-0.5 text-[10px] uppercase tracking-wider text-ot-muted">{s.label}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Bundles Tab */}
           {activeTab === "bundles" && (
-            <div className="node-tab-content">
+            <div>
               {nodeBundles.length === 0 ? (
-                <p style={{ color: "var(--text2)", fontSize: 12, textAlign: "center", padding: 20 }}>
+                <p className="px-1 py-5 text-center text-xs text-ot-muted">
                   No bundles associated with this node yet.
                 </p>
               ) : (
-                <div className="bundle-list" style={{ maxHeight: 400 }}>
-                  {nodeBundles.map((b) => {
-                    const isExpanded = expanded === b.bundle_id;
-                    return (
-                      <div
-                        key={b.bundle_id}
-                        className="bundle-list-item"
-                        style={{ flexDirection: "column", alignItems: "stretch", cursor: "pointer" }}
-                        onClick={() => setExpanded(isExpanded ? null : b.bundle_id)}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <StatusBadge bundle={b} />
-                            <span className="bundle-id" style={{ fontSize: 11 }}>{b.bundle_id.slice(0, 8)}...</span>
-                          </div>
-                          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{isExpanded ? "▲" : "▼"}</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 2 }}>
+                <Accordion
+                  mode="multiple"
+                  items={nodeBundles.map((b) => ({
+                    id: b.bundle_id,
+                    title: (
+                      <span className="flex items-center gap-1.5">
+                        <StatusBadge bundle={b} />
+                        <span className="font-mono text-[11px]">{b.bundle_id.slice(0, 8)}...</span>
+                      </span>
+                    ),
+                    content: (
+                      <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="text-[11px] text-ot-muted">
                           {b.source} → {b.destination} | t={b.creation_time.toFixed(1)}s | {b.hop_count} hop{b.hop_count !== 1 ? "s" : ""} | {b.payload_size_bytes}B
                         </div>
-
-                        {isExpanded && (
-                          <div style={{ marginTop: 8, padding: "8px 0", borderTop: "1px solid var(--border)" }} onClick={(e) => e.stopPropagation()}>
-                            {/* Timing */}
-                            <div style={{ fontSize: 11, color: "var(--text2)", marginBottom: 6 }}>
-                              <div>Encrypt: {b.encrypt_time_ms.toFixed(2)}ms</div>
-                              <div>Transmit: {b.transmission_time_ms.toFixed(2)}ms</div>
-                              {b.decrypt_time_ms != null && <div>Decrypt: {b.decrypt_time_ms.toFixed(2)}ms</div>}
-                              {b.delivery_time != null && <div>Delivered at: t={b.delivery_time.toFixed(1)}s</div>}
-                            </div>
-
-                            {/* Plaintext preview */}
-                            {b.plaintext_preview && (
-                              <div style={{ marginBottom: 6 }}>
-                                <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.5 }}>Plaintext</div>
-                                <div style={{
-                                  fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--accent2)",
-                                  background: "var(--bg)", padding: "4px 6px", borderRadius: 3,
-                                  maxHeight: 40, overflow: "hidden", wordBreak: "break-all"
-                                }}>
-                                  {b.plaintext_preview}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Encrypted preview */}
-                            {b.encrypted_preview && (
-                              <div style={{ marginBottom: 6 }}>
-                                <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.5 }}>Encrypted</div>
-                                <div style={{
-                                  fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--accent)",
-                                  background: "var(--bg)", padding: "4px 6px", borderRadius: 3,
-                                  maxHeight: 40, overflow: "hidden", wordBreak: "break-all"
-                                }}>
-                                  {b.encrypted_preview}...
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Hash & Policy */}
-                            {b.payload_hash && (
-                              <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2 }}>
-                                SHA-256: <span style={{ fontFamily: "var(--font-mono)", color: "var(--text2)" }}>{b.payload_hash.slice(0, 16)}...</span>
-                              </div>
-                            )}
-                            {b.cpabe_policy && (
-                              <div style={{ fontSize: 10, color: "var(--text-muted)" }}>
-                                Policy: <span style={{ color: "var(--accent)" }}>{b.cpabe_policy}</span>
-                              </div>
-                            )}
-
-                            {/* Hop history */}
-                            {b.hop_history.length > 0 && (
-                              <div style={{ marginTop: 6 }}>
-                                <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Path</div>
-                                {b.hop_history.map((hop, i) => (
-                                  <div key={i} style={{ fontSize: 10, color: "var(--text2)", fontFamily: "var(--font-mono)" }}>
-                                    {hop.from_node} → {hop.to_node} @ t={hop.time.toFixed(1)}s ({hop.transmission_time_ms.toFixed(1)}ms)
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Open full bundle inspector */}
-                            <button
-                              className="btn btn-secondary"
-                              style={{ marginTop: 8, fontSize: 11, padding: "4px 10px", flex: "none" }}
-                              onClick={() => onSelectBundle(b.bundle_id)}
-                            >
-                              Open Full Inspector
-                            </button>
+                        <div className="text-[11px] text-ot-muted">
+                          <div>Encrypt: {b.encrypt_time_ms.toFixed(2)}ms</div>
+                          <div>Transmit: {b.transmission_time_ms.toFixed(2)}ms</div>
+                          {b.decrypt_time_ms != null && <div>Decrypt: {b.decrypt_time_ms.toFixed(2)}ms</div>}
+                          {b.delivery_time != null && <div>Delivered at: t={b.delivery_time.toFixed(1)}s</div>}
+                        </div>
+                        {b.plaintext_preview && (
+                          <CodeBlock code={b.plaintext_preview} language="plaintext" maxHeight={80} />
+                        )}
+                        {b.encrypted_preview && (
+                          <CodeBlock code={`${b.encrypted_preview}...`} language="ciphertext" maxHeight={80} />
+                        )}
+                        {b.payload_hash && (
+                          <div className="text-[10px] text-ot-muted">
+                            SHA-256: <span className="font-mono">{b.payload_hash.slice(0, 16)}...</span>
                           </div>
                         )}
+                        {b.cpabe_policy && (
+                          <div className="text-[10px] text-ot-muted">
+                            Policy: <span className="text-navy-text">{b.cpabe_policy}</span>
+                          </div>
+                        )}
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => onSelectBundle(b.bundle_id)}
+                        >
+                          Open Full Inspector
+                        </Button>
                       </div>
-                    );
-                  })}
-                </div>
+                    ),
+                  }))}
+                />
               )}
             </div>
           )}
 
-          {/* Crypto Tab */}
           {activeTab === "key" && (
-            <div className="node-tab-content">
-              <div className="inspector-section">
-                <h3>RSA Public Key</h3>
-                {node.rsa_public_key_pem ? (
-                  <pre className="pem-preview">{node.rsa_public_key_pem}</pre>
-                ) : (
-                  <p style={{ color: "var(--text2)", fontSize: 12 }}>No RSA key generated</p>
-                )}
-              </div>
+            <div className="flex flex-col gap-2">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ot-muted">RSA Public Key</h3>
+              {node.rsa_public_key_pem ? (
+                <CodeBlock code={node.rsa_public_key_pem} language="pem" maxHeight={320} />
+              ) : (
+                <p className="text-xs text-ot-muted">No RSA key generated</p>
+              )}
             </div>
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

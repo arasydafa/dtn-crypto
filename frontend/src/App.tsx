@@ -14,7 +14,7 @@
  * ```
  */
 
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect, lazy, Suspense } from "react";
 import "./App.css";
 import { Button } from "@omega-os/ui";
 import { Zap, Circle, Grid2x2, TreePine } from "lucide-react";
@@ -25,8 +25,10 @@ import NetworkGraph from "./components/NetworkGraph";
 import MetricsPanel from "./components/MetricsPanel";
 import InspectorPanel from "./components/InspectorPanel";
 import NodeInspectorModal from "./components/NodeInspectorModal";
-import WikiModal from "./components/WikiModal";
 import ErrorBoundary from "./components/ErrorBoundary";
+
+// Lazy: pulls in react-markdown via @omega-os/ui Markdown only when opened.
+const WikiModal = lazy(() => import("./components/WikiModal"));
 
 /** Default height of the bottom metrics panel in pixels. */
 const DEFAULT_BOTTOM_HEIGHT = 260;
@@ -276,7 +278,11 @@ export default function App() {
         </div>
       </div>
 
-      {showWiki && <WikiModal onClose={() => setShowWiki(false)} />}
+      {showWiki && (
+        <Suspense fallback={null}>
+          <WikiModal onClose={() => setShowWiki(false)} />
+        </Suspense>
+      )}
 
       {sim.selectedTarget?.type === "node" && sim.nodeDetails[sim.selectedTarget.id] && (
         <NodeInspectorModal
